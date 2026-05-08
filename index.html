@@ -1,0 +1,188 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <title>GymLog</title>
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+
+  <!-- ═══════════════ HOME VIEW ═══════════════ -->
+  <div id="view-home" class="view view--active">
+
+    <div class="home-hero">
+      <div class="home-hero-top">
+        <h1>Gym<span>Log</span></h1>
+        <div class="date-badge" id="today-badge">Today</div>
+      </div>
+      <div class="datetime-row">
+        <div class="input-group">
+          <label for="input-date">Date</label>
+          <input type="date" id="input-date">
+        </div>
+        <div class="input-group">
+          <label for="input-time">Time</label>
+          <input type="time" id="input-time">
+        </div>
+      </div>
+    </div>
+
+    <div class="section-label">Select Session Type</div>
+    <div class="type-grid" id="home-type-grid"></div>
+
+    <div class="start-section">
+      <button class="btn-primary" id="btn-start-session" disabled>
+        Start Session
+      </button>
+    </div>
+
+  </div>
+
+  <!-- ═══════════════ ACTIVE SESSION VIEW ═══════════════ -->
+  <div id="view-session" class="view">
+    <div class="session-backdrop"></div>
+
+    <div class="session-card">
+      <div class="session-type-badge">
+        <div class="session-type-badge-icon" id="session-badge-icon">🏋️</div>
+        <div class="session-type-badge-info">
+          <h2 id="session-badge-name">Strength Training</h2>
+          <p id="session-badge-meta">Today · 09:00</p>
+        </div>
+      </div>
+
+      <div class="timer-container">
+        <div class="timer-label">Elapsed Time</div>
+        <div class="timer-display" id="timer-display">00:00:00</div>
+      </div>
+
+      <textarea
+        class="session-notes"
+        id="session-notes"
+        placeholder="Add notes about your session (optional)…"
+        rows="3"
+      ></textarea>
+
+      <div class="session-actions">
+        <button class="btn-primary" id="btn-finish-session">
+          Finish Session
+        </button>
+        <button class="btn-secondary btn-danger" id="btn-cancel-session">
+          Cancel Session
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ═══════════════ SESSION TYPES VIEW ═══════════════ -->
+  <div id="view-types" class="view">
+
+    <div class="view-header">
+      <h1>Session Types</h1>
+      <p>Manage your training categories</p>
+    </div>
+
+    <button class="add-type-btn" id="btn-open-add-type">+ Add New Type</button>
+
+    <div class="section-label">All Types</div>
+    <div class="types-list" id="types-list"></div>
+
+  </div>
+
+  <!-- ═══════════════ REPORTS VIEW ═══════════════ -->
+  <div id="view-reports" class="view">
+
+    <div class="view-header">
+      <h1>Reports</h1>
+      <p>Your training history</p>
+      <button class="btn-clear-history" id="btn-clear-history">Clear History</button>
+    </div>
+
+    <div class="stats-grid">
+      <div class="stat-card">
+        <div class="stat-value" id="stat-total">0</div>
+        <div class="stat-label">Total Sessions</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-value" id="stat-week">0h</div>
+        <div class="stat-label">This Week</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-value" id="stat-top" style="font-size:1.125rem">—</div>
+        <div class="stat-label">Top Type</div>
+      </div>
+    </div>
+
+    <div class="section-label">Session History</div>
+
+    <div class="filter-row">
+      <select class="filter-select" id="report-filter">
+        <option value="">All Session Types</option>
+      </select>
+    </div>
+
+    <div class="sessions-list" id="sessions-list"></div>
+
+  </div>
+
+  <!-- ═══════════════ BOTTOM NAV ═══════════════ -->
+  <nav id="bottom-nav">
+    <button class="nav--active" data-nav="home">
+      <span class="nav-icon">🏠</span>
+      Home
+    </button>
+    <button data-nav="types">
+      <span class="nav-icon">🏋️</span>
+      Sessions
+    </button>
+    <button data-nav="reports">
+      <span class="nav-icon">📊</span>
+      Reports
+    </button>
+  </nav>
+
+  <!-- ═══════════════ NOTES MODAL ═══════════════ -->
+  <div class="modal" id="modal-notes">
+    <div class="modal-handle"></div>
+    <div class="modal-notes-header" id="modal-notes-header"></div>
+    <div class="notes-body" id="modal-notes-body"></div>
+    <div class="modal-actions" style="margin-top:20px">
+      <button class="btn-secondary" id="btn-close-notes">Close</button>
+    </div>
+  </div>
+
+  <!-- ═══════════════ ADD TYPE MODAL ═══════════════ -->
+  <div class="modal-backdrop" id="modal-backdrop"></div>
+
+  <div class="modal" id="modal-add-type">
+    <div class="modal-handle"></div>
+    <h2>New Session Type</h2>
+    <div class="modal-form">
+      <div class="form-group">
+        <label for="new-type-name">Name</label>
+        <input type="text" id="new-type-name" placeholder="e.g. Martial Arts" maxlength="30">
+      </div>
+      <div class="form-group">
+        <label for="new-type-emoji">Emoji Icon</label>
+        <input type="text" id="new-type-emoji" placeholder="e.g. 🥋" maxlength="4">
+      </div>
+      <div class="form-group">
+        <label>Colour</label>
+        <div class="color-row">
+          <input type="color" id="new-type-color" value="#6366f1">
+          <div class="color-presets" id="color-presets"></div>
+        </div>
+      </div>
+      <div class="modal-actions">
+        <button class="btn-primary" id="btn-save-type">Save Type</button>
+        <button class="btn-secondary" id="btn-cancel-type">Cancel</button>
+      </div>
+    </div>
+  </div>
+
+  <script src="app.js"></script>
+</body>
+</html>
