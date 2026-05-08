@@ -33,6 +33,11 @@
     <div class="section-label">Select Session Type</div>
     <div class="type-grid" id="home-type-grid"></div>
 
+    <div id="subtype-section" class="subtype-section">
+      <div class="subtype-label">Select Subtype <span class="optional-tag">· optional</span></div>
+      <div class="subtype-pills" id="subtype-pills"></div>
+    </div>
+
     <div class="start-section">
       <button class="btn-primary" id="btn-start-session" disabled>
         Start Session
@@ -50,6 +55,7 @@
         <div class="session-type-badge-icon" id="session-badge-icon">🏋️</div>
         <div class="session-type-badge-info">
           <h2 id="session-badge-name">Strength Training</h2>
+          <p id="session-badge-subtype" style="display:none"></p>
           <p id="session-badge-meta">Today · 09:00</p>
         </div>
       </div>
@@ -143,6 +149,22 @@
       Reports
     </button>
   </nav>
+
+  <!-- ═══════════════ ADD SUBTYPE MODAL ═══════════════ -->
+  <div class="modal" id="modal-add-subtype">
+    <div class="modal-handle"></div>
+    <h2 id="modal-subtype-title">Add Subtype</h2>
+    <div class="modal-form">
+      <div class="form-group">
+        <label for="new-subtype-name">Name</label>
+        <input type="text" id="new-subtype-name" placeholder="e.g. Upper Body" maxlength="30">
+      </div>
+      <div class="modal-actions">
+        <button class="btn-primary" id="btn-save-subtype">Save Subtype</button>
+        <button class="btn-secondary" id="btn-cancel-subtype">Cancel</button>
+      </div>
+    </div>
+  </div>
 
   <!-- ═══════════════ NOTES MODAL ═══════════════ -->
   <div class="modal" id="modal-notes">
