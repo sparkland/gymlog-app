@@ -6,16 +6,49 @@
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
   <title>GymLog</title>
-  <link rel="stylesheet" href="styles.css">
+  <link rel="stylesheet" href="styles.css?v=2">
 </head>
 <body>
+
+  <!-- ═══════════════ ONBOARDING VIEW ═══════════════ -->
+  <div id="view-onboarding" class="onboarding-view">
+    <div class="onboarding-inner">
+
+      <div class="onboarding-brand">
+        <div class="onboarding-brand-icon">🏋️</div>
+        <h1 class="onboarding-brand-name">Gym<span>Log</span></h1>
+        <p class="onboarding-brand-tagline">Your personal training companion</p>
+      </div>
+
+      <div class="onboarding-form-card">
+        <h2>Welcome!</h2>
+        <p class="onboarding-form-sub">What should we call you?</p>
+        <div class="form-group">
+          <label for="onboarding-name">Your Name</label>
+          <input type="text" id="onboarding-name" placeholder="e.g. Alex" maxlength="30" autocomplete="given-name">
+        </div>
+        <button class="btn-primary" id="btn-get-started" disabled>
+          Get Started →
+        </button>
+      </div>
+
+      <div class="onboarding-privacy">
+        <span class="onboarding-privacy-icon">🔒</span>
+        <p>All GymLog data — your sessions, training types, and profile — is stored <strong>locally on this device only</strong>. Nothing is ever sent to a remote server or shared with anyone. Your data stays yours.</p>
+      </div>
+
+    </div>
+  </div>
 
   <!-- ═══════════════ HOME VIEW ═══════════════ -->
   <div id="view-home" class="view view--active">
 
     <div class="home-hero">
       <div class="home-hero-top">
-        <h1>Gym<span>Log</span></h1>
+        <div>
+          <h1>Gym<span>Log</span></h1>
+          <p class="home-greeting" id="home-greeting"></p>
+        </div>
         <div class="date-badge" id="today-badge">Today</div>
       </div>
       <div class="datetime-row">
@@ -205,6 +238,6 @@
     </div>
   </div>
 
-  <script src="app.js"></script>
+  <script src="app.js?v=2"></script>
 </body>
 </html>
