@@ -88,6 +88,15 @@ const Storage = {
   getUserName()     { return localStorage.getItem(STORAGE_KEYS.USER_NAME) || null; },
   setUserName(name) { localStorage.setItem(STORAGE_KEYS.USER_NAME, name); },
 
+  deleteSession(id) {
+    Storage.saveSessions(Storage.getSessions().filter(s => s.id !== id));
+  },
+  updateSessionNotes(id, notes) {
+    const sessions = Storage.getSessions();
+    const s = sessions.find(s => s.id === id);
+    if (s) { s.notes = notes; Storage.saveSessions(sessions); }
+  },
+
   deleteSubtype(typeId, subtypeId) {
     const types = Storage.getTypes() || [];
     const type = types.find(t => t.id === typeId);
@@ -107,6 +116,7 @@ const state = {
   reportFilterId:      '',
   expandedTypeId:      null,
   addSubtypeForTypeId: null,
+  notesSessionId:      null,
 };
 
 // ─── Utility ──────────────────────────────────────────────────
@@ -587,6 +597,7 @@ function renderSessionsList(allSessions) {
         <div class="session-duration-value">${formatDuration(session.durationSeconds)}</div>
         <div class="session-duration-label">duration</div>
       </div>
+      <button class="session-delete-btn" data-id="${session.id}" title="Delete session">✕</button>
     `;
 
     list.appendChild(card);
@@ -594,6 +605,10 @@ function renderSessionsList(allSessions) {
 
   list.querySelectorAll('.btn-view-notes').forEach(btn => {
     btn.addEventListener('click', () => showNotesModal(btn.dataset.id));
+  });
+
+  list.querySelectorAll('.session-delete-btn').forEach(btn => {
+    btn.addEventListener('click', () => handleDeleteSession(btn.dataset.id));
   });
 }
 
@@ -739,9 +754,11 @@ function handleSaveSubtype() {
 }
 
 // ─── Notes Modal ──────────────────────────────────────────────
-function showNotesModal(sessionId) {
+function showNotesModal(sessionId, editMode = false) {
   const session = Storage.getSessions().find(s => s.id === sessionId);
   if (!session) return;
+
+  state.notesSessionId = sessionId;
 
   const isToday   = session.date === todayISO();
   const dateLabel = isToday ? 'Today' : formatDate(session.date);
@@ -758,14 +775,62 @@ function showNotesModal(sessionId) {
       </div>
     </div>`;
 
-  document.getElementById('modal-notes-body').textContent = session.notes;
+  const bodyEl    = document.getElementById('modal-notes-body');
+  const actionsEl = document.getElementById('modal-notes-actions');
+
+  if (editMode) {
+    bodyEl.innerHTML = `<textarea class="notes-edit-textarea" id="notes-edit-input">${session.notes || ''}</textarea>`;
+    actionsEl.innerHTML = `
+      <button class="btn-primary" id="btn-save-note">Save Note</button>
+      <button class="btn-secondary" id="btn-cancel-note-edit">Cancel</button>`;
+    setTimeout(() => {
+      const ta = document.getElementById('notes-edit-input');
+      ta.focus();
+      ta.setSelectionRange(ta.value.length, ta.value.length);
+    }, 100);
+    document.getElementById('btn-save-note').addEventListener('click', handleSaveNote);
+    document.getElementById('btn-cancel-note-edit').addEventListener('click', () => showNotesModal(sessionId, false));
+  } else {
+    bodyEl.className  = 'notes-body';
+    bodyEl.textContent = session.notes || '';
+    actionsEl.innerHTML = `
+      <button class="btn-primary" id="btn-edit-note">Edit Note</button>
+      <button class="btn-secondary btn-danger" id="btn-delete-note">Delete Note</button>
+      <button class="btn-secondary" id="btn-close-notes">Close</button>`;
+    document.getElementById('btn-edit-note').addEventListener('click',   () => showNotesModal(sessionId, true));
+    document.getElementById('btn-delete-note').addEventListener('click', () => handleDeleteNote(sessionId));
+    document.getElementById('btn-close-notes').addEventListener('click', closeNotesModal);
+  }
+
   document.getElementById('modal-notes').classList.add('open');
   document.getElementById('modal-backdrop').classList.add('open');
 }
 
 function closeNotesModal() {
+  state.notesSessionId = null;
   document.getElementById('modal-notes').classList.remove('open');
   document.getElementById('modal-backdrop').classList.remove('open');
+}
+
+function handleSaveNote() {
+  const id    = state.notesSessionId;
+  const notes = (document.getElementById('notes-edit-input')?.value || '').trim();
+  if (!id) return;
+  Storage.updateSessionNotes(id, notes);
+  renderSessionsList(Storage.getSessions());
+  showNotesModal(id, false);
+}
+
+function handleDeleteNote(sessionId) {
+  Storage.updateSessionNotes(sessionId, '');
+  renderSessionsList(Storage.getSessions());
+  closeNotesModal();
+}
+
+function handleDeleteSession(id) {
+  if (!confirm('Delete this session? This cannot be undone.')) return;
+  Storage.deleteSession(id);
+  renderReports();
 }
 
 // ─── Add Type Modal ───────────────────────────────────────────
@@ -875,8 +940,6 @@ function wireEvents() {
     closeNotesModal();
     closeAddSubtypeModal();
   });
-
-  document.getElementById('btn-close-notes').addEventListener('click', closeNotesModal);
 
   document.getElementById('btn-clear-history').addEventListener('click', () => {
     if (Storage.getSessions().length === 0) return;
