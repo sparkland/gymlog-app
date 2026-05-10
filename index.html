@@ -6,7 +6,7 @@
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
   <title>GymLog</title>
-  <link rel="stylesheet" href="styles.css?v=4">
+  <link rel="stylesheet" href="styles.css?v=5">
 </head>
 <body>
 
@@ -210,6 +210,26 @@
     <div class="modal-actions" id="modal-notes-actions" style="margin-top:20px"></div>
   </div>
 
+  <!-- ═══════════════ CLEAR CONFIRM MODAL ═══════════════ -->
+  <div class="modal" id="modal-clear-confirm">
+    <div class="modal-handle"></div>
+    <h2>Clear History</h2>
+    <p class="modal-subtitle">Would you like to save a backup before clearing?</p>
+    <div class="export-options" style="margin-top:16px">
+      <button class="export-option" id="btn-clear-export-json">
+        <span class="export-option-icon">📦</span>
+        <div class="export-option-info">
+          <strong>Export JSON Backup</strong>
+          <span>Download a backup of all your sessions first, then decide.</span>
+        </div>
+      </button>
+    </div>
+    <div class="modal-actions" style="margin-top:12px">
+      <button class="btn-secondary btn-danger" id="btn-clear-confirm">Clear Without Backup</button>
+      <button class="btn-secondary" id="btn-clear-cancel">Cancel</button>
+    </div>
+  </div>
+
   <!-- ═══════════════ EXPORT MODAL ═══════════════ -->
   <div class="modal" id="modal-export">
     <div class="modal-handle"></div>
@@ -265,6 +285,6 @@
     </div>
   </div>
 
-  <script src="app.js?v=4"></script>
+  <script src="app.js?v=5"></script>
 </body>
 </html>
