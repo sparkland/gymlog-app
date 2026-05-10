@@ -910,6 +910,203 @@ function completeOnboarding() {
   completeInit();
 }
 
+// ─── Export ───────────────────────────────────────────────────
+function openExportModal() {
+  document.getElementById('modal-export').classList.add('open');
+  document.getElementById('modal-backdrop').classList.add('open');
+}
+
+function closeExportModal() {
+  document.getElementById('modal-export').classList.remove('open');
+  document.getElementById('modal-backdrop').classList.remove('open');
+}
+
+function exportJSON() {
+  const payload = {
+    version: '1.0',
+    app: 'GymLog',
+    exportedAt: new Date().toISOString(),
+    user: { name: Storage.getUserName() },
+    data: {
+      sessionTypes: Storage.getTypes() || [],
+      sessions: Storage.getSessions(),
+    },
+  };
+  const blob = new Blob([JSON.stringify(payload, null, 2)], { type: 'application/json' });
+  const url  = URL.createObjectURL(blob);
+  const a    = document.createElement('a');
+  a.href     = url;
+  a.download = `gymlog-backup-${new Date().toISOString().slice(0, 10)}.json`;
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  URL.revokeObjectURL(url);
+  closeExportModal();
+}
+
+function exportPDF() {
+  const sessions  = Storage.getSessions().slice().sort((a, b) =>
+    b.date.localeCompare(a.date) || b.startTime.localeCompare(a.startTime));
+  const userName  = Storage.getUserName();
+  const totalSecs = sessions.reduce((sum, s) => sum + s.durationSeconds, 0);
+  const exportDate = new Intl.DateTimeFormat('en-GB', {
+    day: 'numeric', month: 'long', year: 'numeric',
+  }).format(new Date());
+
+  const sessionRows = sessions.length === 0
+    ? '<p style="color:#94a3b8;text-align:center;padding:40px 0">No sessions recorded yet.</p>'
+    : sessions.map(s => {
+        const dateLabel = new Intl.DateTimeFormat('en-GB', {
+          weekday:'short', day:'numeric', month:'short', year:'numeric',
+        }).format(new Date(s.date + 'T00:00:00'));
+        const titleLine = s.sessionSubtypeName
+          ? `${s.sessionTypeName} <span style="color:#94a3b8;font-weight:400">· ${s.sessionSubtypeName}</span>`
+          : s.sessionTypeName;
+        const notesHtml = s.notes
+          ? `<div style="margin-top:10px;padding:10px 14px;background:#0f172a;border-radius:8px;font-size:0.875rem;color:#cbd5e1;white-space:pre-wrap;line-height:1.6">${s.notes.replace(/</g,'&lt;').replace(/>/g,'&gt;')}</div>`
+          : '';
+        return `
+          <div style="background:#1e293b;border-radius:14px;padding:16px 20px;margin-bottom:12px;display:flex;align-items:flex-start;gap:16px">
+            <div style="font-size:1.75rem;flex-shrink:0;margin-top:2px">${s.sessionTypeEmoji}</div>
+            <div style="flex:1;min-width:0">
+              <div style="font-size:1rem;font-weight:700;color:#f1f5f9">${titleLine}</div>
+              <div style="font-size:0.8125rem;color:#94a3b8;margin-top:3px">
+                ${dateLabel} · ${s.startTime} · ${formatDuration(s.durationSeconds)}
+              </div>
+              ${notesHtml}
+            </div>
+          </div>`;
+      }).join('');
+
+  const html = `<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>GymLog Export — ${exportDate}</title>
+  <style>
+    *, *::before, *::after {
+      box-sizing: border-box;
+      -webkit-print-color-adjust: exact;
+      print-color-adjust: exact;
+    }
+    body {
+      margin: 0;
+      padding: 32px 24px 48px;
+      background: #0f172a;
+      color: #f1f5f9;
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif;
+      font-size: 16px;
+      line-height: 1.5;
+      max-width: 720px;
+      margin-left: auto;
+      margin-right: auto;
+    }
+    .header {
+      display: flex;
+      align-items: flex-start;
+      justify-content: space-between;
+      padding-bottom: 24px;
+      border-bottom: 1px solid rgba(255,255,255,0.08);
+      margin-bottom: 28px;
+    }
+    .logo { font-size: 1.75rem; font-weight: 800; letter-spacing: -0.02em; }
+    .logo span { color: #6366f1; }
+    .header-meta { text-align: right; color: #94a3b8; font-size: 0.8125rem; line-height: 1.7; }
+    .stats-row {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 12px;
+      margin-bottom: 28px;
+    }
+    .stat-card {
+      background: #1e293b;
+      border-radius: 14px;
+      padding: 16px;
+      text-align: center;
+    }
+    .stat-value { font-size: 1.5rem; font-weight: 800; color: #6366f1; }
+    .stat-label { font-size: 0.75rem; color: #94a3b8; text-transform: uppercase;
+                  letter-spacing: 0.06em; margin-top: 4px; }
+    .section-label {
+      font-size: 0.75rem;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.07em;
+      color: #64748b;
+      margin-bottom: 12px;
+    }
+    .print-btn {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      margin-bottom: 24px;
+      background: #6366f1;
+      color: #fff;
+      border: none;
+      border-radius: 10px;
+      padding: 10px 20px;
+      font-size: 0.9375rem;
+      font-weight: 600;
+      cursor: pointer;
+    }
+    @media print {
+      .print-btn { display: none; }
+      body { padding: 0; }
+      @page { margin: 0.75in; }
+    }
+  </style>
+</head>
+<body>
+  <div class="header">
+    <div>
+      <div class="logo">Gym<span>Log</span></div>
+      ${userName ? `<div style="color:#94a3b8;font-size:0.875rem;margin-top:4px">${userName}'s Training Report</div>` : ''}
+    </div>
+    <div class="header-meta">
+      Exported ${exportDate}<br>
+      ${sessions.length} session${sessions.length !== 1 ? 's' : ''}
+    </div>
+  </div>
+
+  <button class="print-btn no-print" onclick="window.print()">🖨️ Save as PDF</button>
+
+  <div class="stats-row">
+    <div class="stat-card">
+      <div class="stat-value">${sessions.length}</div>
+      <div class="stat-label">Total Sessions</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-value">${formatDurationShort(totalSecs)}</div>
+      <div class="stat-label">Total Time</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-value" style="font-size:1.25rem">
+        ${sessions.length > 0 ? (() => {
+          const counts = {};
+          sessions.forEach(s => {
+            counts[s.sessionTypeName] = (counts[s.sessionTypeName] || { c: 0, e: s.sessionTypeEmoji });
+            counts[s.sessionTypeName].c++;
+          });
+          return Object.values(counts).sort((a,b) => b.c - a.c)[0].e;
+        })() : '—'}
+      </div>
+      <div class="stat-label">Top Type</div>
+    </div>
+  </div>
+
+  <div class="section-label">Session History</div>
+  ${sessionRows}
+</body>
+</html>`;
+
+  const win = window.open('', '_blank');
+  if (!win) { alert('Please allow pop-ups for this site to use the PDF export.'); return; }
+  win.document.write(html);
+  win.document.close();
+  closeExportModal();
+}
+
 // ─── Event Wiring ─────────────────────────────────────────────
 function wireEvents() {
   document.getElementById('bottom-nav').addEventListener('click', e => {
@@ -939,7 +1136,13 @@ function wireEvents() {
     closeModal();
     closeNotesModal();
     closeAddSubtypeModal();
+    closeExportModal();
   });
+
+  document.getElementById('btn-open-export').addEventListener('click', openExportModal);
+  document.getElementById('btn-cancel-export').addEventListener('click', closeExportModal);
+  document.getElementById('btn-export-pdf').addEventListener('click', exportPDF);
+  document.getElementById('btn-export-json').addEventListener('click', exportJSON);
 
   document.getElementById('btn-clear-history').addEventListener('click', () => {
     if (Storage.getSessions().length === 0) return;

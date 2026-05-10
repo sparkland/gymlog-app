@@ -6,7 +6,7 @@
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
   <title>GymLog</title>
-  <link rel="stylesheet" href="styles.css?v=3">
+  <link rel="stylesheet" href="styles.css?v=4">
 </head>
 <body>
 
@@ -137,7 +137,10 @@
     <div class="view-header">
       <h1>Reports</h1>
       <p>Your training history</p>
-      <button class="btn-clear-history" id="btn-clear-history">Clear History</button>
+      <div class="view-header-actions">
+        <button class="btn-export" id="btn-open-export">Export</button>
+        <button class="btn-clear-history" id="btn-clear-history">Clear History</button>
+      </div>
     </div>
 
     <div class="stats-grid">
@@ -207,6 +210,32 @@
     <div class="modal-actions" id="modal-notes-actions" style="margin-top:20px"></div>
   </div>
 
+  <!-- ═══════════════ EXPORT MODAL ═══════════════ -->
+  <div class="modal" id="modal-export">
+    <div class="modal-handle"></div>
+    <h2>Export Report</h2>
+    <p class="modal-subtitle">Choose an export format</p>
+    <div class="export-options">
+      <button class="export-option" id="btn-export-pdf">
+        <span class="export-option-icon">🖨️</span>
+        <div class="export-option-info">
+          <strong>Styled PDF</strong>
+          <span>Opens a print-ready page in GymLog style. Use your browser's Print → Save as PDF.</span>
+        </div>
+      </button>
+      <button class="export-option" id="btn-export-json">
+        <span class="export-option-icon">📦</span>
+        <div class="export-option-info">
+          <strong>JSON Backup</strong>
+          <span>Downloads a .json file of all your sessions. Can be reimported into GymLog later.</span>
+        </div>
+      </button>
+    </div>
+    <div class="modal-actions" style="margin-top:16px">
+      <button class="btn-secondary" id="btn-cancel-export">Cancel</button>
+    </div>
+  </div>
+
   <!-- ═══════════════ ADD TYPE MODAL ═══════════════ -->
   <div class="modal-backdrop" id="modal-backdrop"></div>
 
@@ -236,6 +265,6 @@
     </div>
   </div>
 
-  <script src="app.js?v=3"></script>
+  <script src="app.js?v=4"></script>
 </body>
 </html>
