@@ -2,9 +2,10 @@
 
 // ─── Constants ────────────────────────────────────────────────
 const STORAGE_KEYS = {
-  TYPES:   'gym_session_types',
-  SESSIONS:'gym_sessions',
-  ACTIVE:  'gym_active_session',
+  TYPES:    'gym_session_types',
+  SESSIONS: 'gym_sessions',
+  ACTIVE:   'gym_active_session',
+  USER_NAME:'gym_user_name',
 };
 
 const COLOR_PRESETS = [
@@ -84,6 +85,9 @@ const Storage = {
     type.subtypes.push(subtype);
     Storage.saveTypes(types);
   },
+  getUserName()     { return localStorage.getItem(STORAGE_KEYS.USER_NAME) || null; },
+  setUserName(name) { localStorage.setItem(STORAGE_KEYS.USER_NAME, name); },
+
   deleteSubtype(typeId, subtypeId) {
     const types = Storage.getTypes() || [];
     const type = types.find(t => t.id === typeId);
@@ -246,6 +250,10 @@ function renderHome() {
 
   const badge = document.getElementById('today-badge');
   badge.textContent = dateInput.value === todayISO() ? 'Today' : formatDate(dateInput.value);
+
+  const name = Storage.getUserName();
+  const greetingEl = document.getElementById('home-greeting');
+  if (greetingEl) greetingEl.textContent = name ? `Hey, ${name} 👋` : '';
 
   renderTypeGrid();
   renderSubtypePicker();
@@ -470,6 +478,9 @@ function renderTypes() {
 // ─── Render: Reports ──────────────────────────────────────────
 function renderReports() {
   const allSessions = Storage.getSessions();
+  const name = Storage.getUserName();
+  const subtitle = document.querySelector('#view-reports .view-header p');
+  if (subtitle) subtitle.textContent = name ? `${name}'s training history` : 'Your training history';
   renderStats(allSessions);
   renderFilterSelect(allSessions);
   renderSessionsList(allSessions);
@@ -799,6 +810,41 @@ function renderColorPresets() {
   });
 }
 
+// ─── Onboarding ───────────────────────────────────────────────
+function showOnboarding() {
+  document.getElementById('view-onboarding').classList.add('active');
+  document.getElementById('bottom-nav').classList.add('hidden');
+  setTimeout(() => document.getElementById('onboarding-name').focus(), 400);
+}
+
+function hideOnboarding() {
+  document.getElementById('view-onboarding').classList.remove('active');
+  document.getElementById('bottom-nav').classList.remove('hidden');
+}
+
+function wireOnboarding() {
+  const input  = document.getElementById('onboarding-name');
+  const button = document.getElementById('btn-get-started');
+
+  input.addEventListener('input', () => {
+    button.disabled = input.value.trim().length === 0;
+  });
+
+  input.addEventListener('keydown', e => {
+    if (e.key === 'Enter' && input.value.trim()) completeOnboarding();
+  });
+
+  button.addEventListener('click', completeOnboarding);
+}
+
+function completeOnboarding() {
+  const name = document.getElementById('onboarding-name').value.trim();
+  if (!name) return;
+  Storage.setUserName(name);
+  hideOnboarding();
+  completeInit();
+}
+
 // ─── Event Wiring ─────────────────────────────────────────────
 function wireEvents() {
   document.getElementById('bottom-nav').addEventListener('click', e => {
@@ -857,7 +903,7 @@ function wireEvents() {
 }
 
 // ─── Init ─────────────────────────────────────────────────────
-function init() {
+function completeInit() {
   const existing = Storage.getTypes();
   if (existing === null) {
     Storage.saveTypes(DEFAULT_TYPES);
@@ -877,6 +923,15 @@ function init() {
   }
 
   navigate('home');
+}
+
+function init() {
+  wireOnboarding();
+  if (!Storage.getUserName()) {
+    showOnboarding();
+    return;
+  }
+  completeInit();
 }
 
 document.addEventListener('DOMContentLoaded', init);
