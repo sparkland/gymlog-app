@@ -6,7 +6,10 @@ const STORAGE_KEYS = {
   SESSIONS: 'gym_sessions',
   ACTIVE:   'gym_active_session',
   USER_NAME:'gym_user_name',
+  UNITS:    'gym_units',
 };
+
+const DEFAULT_UNITS = { weight: 'kg', distance: 'km' };
 
 const COLOR_PRESETS = [
   '#6366f1','#ef4444','#f97316','#eab308',
@@ -87,6 +90,11 @@ const Storage = {
   },
   getUserName()     { return localStorage.getItem(STORAGE_KEYS.USER_NAME) || null; },
   setUserName(name) { localStorage.setItem(STORAGE_KEYS.USER_NAME, name); },
+  getUnits() {
+    const raw = localStorage.getItem(STORAGE_KEYS.UNITS);
+    return raw ? JSON.parse(raw) : { ...DEFAULT_UNITS };
+  },
+  saveUnits(u) { localStorage.setItem(STORAGE_KEYS.UNITS, JSON.stringify(u)); },
 
   deleteSession(id) {
     Storage.saveSessions(Storage.getSessions().filter(s => s.id !== id));
@@ -214,17 +222,24 @@ function migrateTypes(types) {
 }
 
 // ─── Router ───────────────────────────────────────────────────
+// Sub-views that live under the Settings tab
+const SETTINGS_SUB_VIEWS = new Set(['units', 'data', 'about']);
+
 function navigate(viewName) {
   document.querySelectorAll('.view').forEach(v => v.classList.remove('view--active'));
   document.getElementById(`view-${viewName}`).classList.add('view--active');
 
+  const navTarget = SETTINGS_SUB_VIEWS.has(viewName) ? 'settings' : viewName;
   document.querySelectorAll('#bottom-nav button').forEach(btn => {
-    btn.classList.toggle('nav--active', btn.dataset.nav === viewName);
+    btn.classList.toggle('nav--active', btn.dataset.nav === navTarget);
   });
 
   state.currentView = viewName;
 
-  const renderers = { home: renderHome, types: renderTypes, reports: renderReports };
+  const renderers = {
+    home: renderHome, types: renderTypes, reports: renderReports,
+    settings: renderSettings, units: renderUnits, data: renderData, about: renderAbout,
+  };
   if (renderers[viewName]) renderers[viewName]();
 }
 
@@ -612,6 +627,30 @@ function renderSessionsList(allSessions) {
   });
 }
 
+// ─── Render: Settings ────────────────────────────────────────
+function renderSettings() {
+  // Settings rows navigate via their data-nav attribute — wired once in wireEvents
+}
+
+// ─── Render: Units ───────────────────────────────────────────
+function renderUnits() {
+  const units = Storage.getUnits();
+  document.getElementById('unit-weight-kg').checked    = units.weight === 'kg';
+  document.getElementById('unit-weight-lbs').checked   = units.weight === 'lbs';
+  document.getElementById('unit-distance-km').checked  = units.distance === 'km';
+  document.getElementById('unit-distance-miles').checked = units.distance === 'miles';
+}
+
+// ─── Render: Data ────────────────────────────────────────────
+function renderData() {
+  // Static view — buttons wired in wireEvents
+}
+
+// ─── Render: About ───────────────────────────────────────────
+function renderAbout() {
+  // Static view — no dynamic content needed
+}
+
 // ─── Handlers ─────────────────────────────────────────────────
 function handleStartSession() {
   if (!state.selectedTypeId) return;
@@ -910,6 +949,23 @@ function completeOnboarding() {
   completeInit();
 }
 
+// ─── Reset Confirm Modal ──────────────────────────────────────
+function openResetConfirmModal() {
+  document.getElementById('modal-reset-confirm').classList.add('open');
+  document.getElementById('modal-backdrop').classList.add('open');
+}
+
+function closeResetConfirmModal() {
+  document.getElementById('modal-reset-confirm').classList.remove('open');
+  document.getElementById('modal-backdrop').classList.remove('open');
+}
+
+function handleResetData() {
+  closeResetConfirmModal();
+  Object.values(STORAGE_KEYS).forEach(key => localStorage.removeItem(key));
+  location.reload();
+}
+
 // ─── Clear Confirm Modal ──────────────────────────────────────
 function openClearConfirmModal() {
   document.getElementById('modal-clear-confirm').classList.add('open');
@@ -1156,6 +1212,7 @@ function wireEvents() {
     closeAddSubtypeModal();
     closeExportModal();
     closeClearConfirmModal();
+    closeResetConfirmModal();
   });
 
   document.getElementById('btn-open-export').addEventListener('click', openExportModal);
@@ -1189,6 +1246,48 @@ function wireEvents() {
   document.getElementById('new-subtype-name').addEventListener('keydown', e => {
     if (e.key === 'Enter') handleSaveSubtype();
   });
+
+  // Settings nav rows
+  document.querySelectorAll('.settings-row[data-nav]').forEach(row => {
+    row.addEventListener('click', () => navigate(row.dataset.nav));
+  });
+
+  // Back buttons
+  document.getElementById('btn-back-units').addEventListener('click', () => navigate('settings'));
+  document.getElementById('btn-back-data').addEventListener('click',  () => navigate('settings'));
+  document.getElementById('btn-back-about').addEventListener('click', () => navigate('settings'));
+
+  // Units radio buttons
+  document.querySelectorAll('input[name="weight-unit"]').forEach(radio => {
+    radio.addEventListener('change', () => {
+      const units = Storage.getUnits();
+      units.weight = radio.value;
+      Storage.saveUnits(units);
+    });
+  });
+  document.querySelectorAll('input[name="distance-unit"]').forEach(radio => {
+    radio.addEventListener('change', () => {
+      const units = Storage.getUnits();
+      units.distance = radio.value;
+      Storage.saveUnits(units);
+    });
+  });
+
+  // Data page
+  document.getElementById('btn-data-export').addEventListener('click', openExportModal);
+  document.getElementById('btn-data-clear').addEventListener('click', () => {
+    if (Storage.getSessions().length === 0) return;
+    openClearConfirmModal();
+  });
+  document.getElementById('btn-data-reset').addEventListener('click', openResetConfirmModal);
+
+  // Reset confirm modal
+  document.getElementById('btn-reset-export-json').addEventListener('click', () => {
+    closeResetConfirmModal();
+    exportJSON();
+  });
+  document.getElementById('btn-reset-confirm').addEventListener('click', handleResetData);
+  document.getElementById('btn-reset-cancel').addEventListener('click', closeResetConfirmModal);
 }
 
 // ─── Init ─────────────────────────────────────────────────────

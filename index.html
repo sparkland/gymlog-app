@@ -6,7 +6,7 @@
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
   <title>GymLog</title>
-  <link rel="stylesheet" href="styles.css?v=5">
+  <link rel="stylesheet" href="styles.css?v=6">
 </head>
 <body>
 
@@ -184,7 +184,187 @@
       <span class="nav-icon">📊</span>
       Reports
     </button>
+    <button data-nav="settings">
+      <span class="nav-icon">⚙️</span>
+      Settings
+    </button>
   </nav>
+
+  <!-- ═══════════════ SETTINGS VIEW ═══════════════ -->
+  <div id="view-settings" class="view">
+    <div class="view-header">
+      <h1>Settings</h1>
+      <p>Preferences &amp; app info</p>
+    </div>
+    <div class="settings-list">
+      <button class="settings-row" data-nav="units">
+        <span class="settings-row-icon">⚖️</span>
+        <div class="settings-row-info">
+          <h3>Units</h3>
+          <p>Weight and distance preferences</p>
+        </div>
+        <span class="settings-row-chevron">›</span>
+      </button>
+      <button class="settings-row" data-nav="data">
+        <span class="settings-row-icon">🗄️</span>
+        <div class="settings-row-info">
+          <h3>Data</h3>
+          <p>Import, export and manage your data</p>
+        </div>
+        <span class="settings-row-chevron">›</span>
+      </button>
+      <button class="settings-row" data-nav="about">
+        <span class="settings-row-icon">ℹ️</span>
+        <div class="settings-row-info">
+          <h3>About</h3>
+          <p>Version, creator and project links</p>
+        </div>
+        <span class="settings-row-chevron">›</span>
+      </button>
+    </div>
+  </div>
+
+  <!-- ═══════════════ UNITS VIEW ═══════════════ -->
+  <div id="view-units" class="view">
+    <div class="view-header">
+      <button class="btn-back" id="btn-back-units">← Settings</button>
+      <h1>Units</h1>
+      <p>Choose your preferred units</p>
+    </div>
+    <div class="settings-section">
+      <div class="settings-section-label">Weight Units</div>
+      <div class="settings-card">
+        <label class="radio-row">
+          <span class="radio-row-label">Kilograms</span>
+          <input type="radio" name="weight-unit" value="kg" id="unit-weight-kg">
+          <span class="radio-custom"></span>
+        </label>
+        <label class="radio-row">
+          <span class="radio-row-label">Pounds</span>
+          <input type="radio" name="weight-unit" value="lbs" id="unit-weight-lbs">
+          <span class="radio-custom"></span>
+        </label>
+      </div>
+    </div>
+    <div class="settings-section">
+      <div class="settings-section-label">Distance Units</div>
+      <div class="settings-card">
+        <label class="radio-row">
+          <span class="radio-row-label">Kilometres</span>
+          <input type="radio" name="distance-unit" value="km" id="unit-distance-km">
+          <span class="radio-custom"></span>
+        </label>
+        <label class="radio-row">
+          <span class="radio-row-label">Miles</span>
+          <input type="radio" name="distance-unit" value="miles" id="unit-distance-miles">
+          <span class="radio-custom"></span>
+        </label>
+      </div>
+    </div>
+  </div>
+
+  <!-- ═══════════════ DATA VIEW ═══════════════ -->
+  <div id="view-data" class="view">
+    <div class="view-header">
+      <button class="btn-back" id="btn-back-data">← Settings</button>
+      <h1>Data</h1>
+      <p>Import, export and manage your data</p>
+    </div>
+    <div class="settings-section">
+      <div class="settings-section-label">Backup &amp; Restore</div>
+      <div class="settings-card settings-card--actions">
+        <button class="data-action-row data-action-row--disabled" disabled>
+          <span class="data-action-icon">📥</span>
+          <div class="data-action-info">
+            <strong>Import</strong>
+            <span>Coming soon</span>
+          </div>
+        </button>
+        <button class="data-action-row" id="btn-data-export">
+          <span class="data-action-icon">📤</span>
+          <div class="data-action-info">
+            <strong>Export</strong>
+            <span>Save a JSON or styled PDF backup</span>
+          </div>
+        </button>
+      </div>
+    </div>
+    <div class="settings-section">
+      <div class="settings-section-label">Manage Data</div>
+      <div class="settings-card settings-card--actions">
+        <button class="data-action-row data-action-row--danger" id="btn-data-clear">
+          <span class="data-action-icon">🗑️</span>
+          <div class="data-action-info">
+            <strong>Clear History</strong>
+            <span>Delete all recorded sessions</span>
+          </div>
+        </button>
+        <button class="data-action-row data-action-row--danger" id="btn-data-reset">
+          <span class="data-action-icon">⚠️</span>
+          <div class="data-action-info">
+            <strong>Reset App Data</strong>
+            <span>Wipe all data including profile and custom types</span>
+          </div>
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ═══════════════ ABOUT VIEW ═══════════════ -->
+  <div id="view-about" class="view">
+    <div class="view-header">
+      <button class="btn-back" id="btn-back-about">← Settings</button>
+      <h1>About</h1>
+    </div>
+    <div class="about-hero">
+      <div class="about-hero-icon">🏋️</div>
+      <h2 class="about-app-name">Gym<span>Log</span></h2>
+      <p class="about-version">version 1.2</p>
+    </div>
+    <div class="settings-section">
+      <div class="settings-section-label">Creator</div>
+      <div class="settings-card about-creator-card">
+        <p class="about-creator-name">Mark Robertson</p>
+        <div class="about-links">
+          <a class="about-link" href="https://github.com/sparkland/gymlog-app" target="_blank" rel="noopener">
+            <span class="about-link-icon">🐙</span> GitHub Project
+          </a>
+          <a class="about-link" href="https://www.linkedin.com/in/markcraigrobertson" target="_blank" rel="noopener">
+            <span class="about-link-icon">💼</span> LinkedIn
+          </a>
+        </div>
+      </div>
+    </div>
+    <div class="settings-section">
+      <div class="settings-section-label">Storage</div>
+      <div class="settings-card">
+        <p class="about-storage-note">
+          <span style="font-size:1rem">🔒</span>
+          All GymLog data is stored <strong>locally on this device only</strong>. Nothing is ever sent to a remote server or shared with anyone.
+        </p>
+      </div>
+    </div>
+  </div>
+
+  <!-- ═══════════════ RESET CONFIRM MODAL ═══════════════ -->
+  <div class="modal" id="modal-reset-confirm">
+    <div class="modal-handle"></div>
+    <h2>Reset App Data</h2>
+    <p class="modal-subtitle">This will permanently delete <strong>all</strong> app data — sessions, profile, custom types and settings.</p>
+    <div class="export-options" style="margin-top:16px">
+      <button class="export-option" id="btn-reset-export-json">
+        <span class="export-option-icon">📦</span>
+        <div class="export-option-info">
+          <strong>Export JSON Backup First</strong>
+          <span>Download a backup before wiping everything.</span>
+        </div>
+      </button>
+    </div>
+    <div class="modal-actions" style="margin-top:12px">
+      <button class="btn-secondary btn-danger" id="btn-reset-confirm">Reset Everything</button>
+      <button class="btn-secondary" id="btn-reset-cancel">Cancel</button>
+    </div>
+  </div>
 
   <!-- ═══════════════ ADD SUBTYPE MODAL ═══════════════ -->
   <div class="modal" id="modal-add-subtype">
@@ -285,6 +465,6 @@
     </div>
   </div>
 
-  <script src="app.js?v=5"></script>
+  <script src="app.js?v=6"></script>
 </body>
 </html>
