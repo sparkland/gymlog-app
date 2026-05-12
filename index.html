@@ -5,6 +5,10 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <!-- Ask the browser not to cache the HTML document itself -->
+  <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+  <meta http-equiv="Pragma" content="no-cache">
+  <meta http-equiv="Expires" content="0">
   <title>GymLog</title>
   <link rel="stylesheet" href="styles.css?v=11">
 </head>
@@ -514,5 +518,15 @@
   </div>
 
   <script src="app.js?v=11"></script>
+  <script>
+    // Register service worker for network-first caching (requires HTTPS or localhost).
+    // The SW never touches localStorage — all user data (sessions, name, units) is safe.
+    if ('serviceWorker' in navigator) {
+      window.addEventListener('load', () => {
+        navigator.serviceWorker.register('/sw.js')
+          .catch(err => console.warn('GymLog: Service Worker registration failed:', err));
+      });
+    }
+  </script>
 </body>
 </html>
