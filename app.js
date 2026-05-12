@@ -996,11 +996,18 @@ function closeExportModal() {
 }
 
 function exportJSON() {
+  const units = Storage.getUnits();
   const payload = {
-    version: '1.0',
+    version: '1.1',
     app: 'GymLog',
     exportedAt: new Date().toISOString(),
-    user: { name: Storage.getUserName() },
+    user: {
+      name: Storage.getUserName(),
+      preferences: {
+        weightUnit: units.weight,
+        distanceUnit: units.distance,
+      },
+    },
     data: {
       sessionTypes: Storage.getTypes() || [],
       sessions: Storage.getSessions(),
