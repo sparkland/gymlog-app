@@ -1507,6 +1507,12 @@ body {
   align-items: flex-start;
 }
 
+.about-storage-icon {
+  font-size: 1rem;
+  flex-shrink: 0;
+  line-height: 1.55;
+}
+
 .about-storage-note strong { color: var(--text-primary); }
 
 /* ─── Home Greeting ──────────────────────────────────────────── */
