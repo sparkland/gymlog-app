@@ -6,7 +6,7 @@
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
   <title>GymLog</title>
-  <link rel="stylesheet" href="styles.css?v=8">
+  <link rel="stylesheet" href="styles.css?v=11">
 </head>
 <body>
 
@@ -336,11 +336,59 @@
       </div>
     </div>
     <div class="settings-section">
+      <div class="settings-section-label">Release Notes</div>
+      <div class="settings-card release-notes">
+        <div class="release-version">
+          <div class="release-version-header">
+            <span class="release-badge">v1.2</span>
+            <span class="release-version-title">Settings &amp; Data Management</span>
+          </div>
+          <ul class="release-list">
+            <li>Added Settings functionality</li>
+            <li>Added functionality to clear all stored data</li>
+          </ul>
+        </div>
+        <div class="release-version">
+          <div class="release-version-header">
+            <span class="release-badge">v1.1</span>
+            <span class="release-version-title">Exports &amp; Subtypes</span>
+          </div>
+          <ul class="release-list">
+            <li>Added Data Export functionality</li>
+            <li>Added default Session Subtypes</li>
+            <li>Added ability to add Session Subtypes</li>
+          </ul>
+        </div>
+        <div class="release-version release-version--last">
+          <div class="release-version-header">
+            <span class="release-badge release-badge--muted">v1.0</span>
+            <span class="release-version-title">Initial Release</span>
+          </div>
+          <ul class="release-list">
+            <li>Initial release</li>
+            <li>Added ability to create Sessions</li>
+            <li>Added default Session Types</li>
+            <li>Added ability to add Sessions and new Session Types</li>
+            <li>Added basic Report functionality</li>
+          </ul>
+        </div>
+      </div>
+    </div>
+    <div class="settings-section">
       <div class="settings-section-label">Storage</div>
       <div class="settings-card">
         <p class="about-storage-note">
           <span class="about-storage-icon">🔒</span>
           <span>All GymLog data is stored <strong>locally on this device only</strong>. Nothing is ever sent to a remote server or shared with anyone.</span>
+        </p>
+      </div>
+    </div>
+    <div class="settings-section">
+      <div class="settings-section-label">Built with</div>
+      <div class="settings-card">
+        <p class="about-storage-note">
+          <span class="about-storage-icon">✦</span>
+          <span>This app was built and iterated with <strong>Claude Code</strong> as part of a personal journey to learn AI-assisted development tools. Most features, fixes, and design decisions were explored collaboratively with Claude.</span>
         </p>
       </div>
     </div>
@@ -465,6 +513,6 @@
     </div>
   </div>
 
-  <script src="app.js?v=8"></script>
+  <script src="app.js?v=11"></script>
 </body>
 </html>
