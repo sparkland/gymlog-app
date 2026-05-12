@@ -1497,6 +1497,68 @@ body {
 
 .about-link-icon { font-size: 1.125rem; }
 
+/* ── Release Notes ───────────────────────────── */
+.release-notes {
+  max-height: 220px;
+  overflow-y: auto;
+  padding: 4px 0;
+  scrollbar-width: thin;
+  scrollbar-color: var(--bg-elevated) transparent;
+}
+
+.release-notes::-webkit-scrollbar { width: 4px; }
+.release-notes::-webkit-scrollbar-track { background: transparent; }
+.release-notes::-webkit-scrollbar-thumb { background: var(--bg-elevated); border-radius: 2px; }
+
+.release-version {
+  padding: 14px 18px;
+  border-bottom: 1px solid var(--border);
+}
+
+.release-version--last { border-bottom: none; }
+
+.release-version-header {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 8px;
+}
+
+.release-badge {
+  font-size: 0.6875rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  background: var(--accent);
+  color: #fff;
+  padding: 2px 7px;
+  border-radius: 20px;
+  flex-shrink: 0;
+}
+
+.release-badge--muted {
+  background: var(--bg-elevated);
+  color: var(--text-secondary);
+}
+
+.release-version-title {
+  font-size: 0.875rem;
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+.release-list {
+  margin: 0;
+  padding-left: 18px;
+  list-style: disc;
+}
+
+.release-list li {
+  font-size: 0.8125rem;
+  color: var(--text-secondary);
+  line-height: 1.6;
+}
+
+/* ── Storage note ────────────────────────────── */
 .about-storage-note {
   padding: 16px 18px;
   font-size: 0.875rem;
