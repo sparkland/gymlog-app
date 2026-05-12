@@ -1577,44 +1577,6 @@ body {
 
 .about-storage-note strong { color: var(--text-primary); }
 
-/* ── Built with ──────────────────────────────── */
-.about-built-with {
-  margin: 8px 16px 32px;
-  padding: 20px;
-  border-radius: var(--radius-card);
-  border: 1px solid color-mix(in srgb, var(--accent) 30%, transparent);
-  background: color-mix(in srgb, var(--accent) 8%, var(--bg-card));
-  text-align: center;
-}
-
-.about-built-with-label {
-  font-size: 0.6875rem;
-  font-weight: 700;
-  letter-spacing: 0.1em;
-  text-transform: uppercase;
-  color: var(--accent);
-  margin: 0 0 6px;
-}
-
-.about-built-with-tool {
-  font-size: 1.125rem;
-  font-weight: 700;
-  color: var(--text-primary);
-  margin: 0 0 12px;
-  letter-spacing: -0.01em;
-}
-
-.about-built-with-desc {
-  font-size: 0.8125rem;
-  color: var(--text-secondary);
-  line-height: 1.6;
-  margin: 0;
-}
-
-.about-built-with-desc strong {
-  color: var(--accent);
-  font-weight: 600;
-}
 
 /* ─── Home Greeting ──────────────────────────────────────────── */
 .home-greeting {
