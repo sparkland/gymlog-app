@@ -1667,11 +1667,16 @@ function exportPDF() {
       color: #64748b;
       margin-bottom: 12px;
     }
-    .print-btn {
+    .action-bar {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      margin-bottom: 24px;
+    }
+    .print-btn, .back-btn {
       display: inline-flex;
       align-items: center;
       gap: 8px;
-      margin-bottom: 24px;
       background: #6366f1;
       color: #fff;
       border: none;
@@ -1680,9 +1685,16 @@ function exportPDF() {
       font-size: 0.9375rem;
       font-weight: 600;
       cursor: pointer;
+      text-decoration: none;
     }
+    .back-btn {
+      background: #1e293b;
+      color: #94a3b8;
+      border: 1px solid rgba(255,255,255,0.08);
+    }
+    .back-btn:hover { background: #334155; color: #f1f5f9; }
     @media print {
-      .print-btn { display: none; }
+      .action-bar { display: none; }
       body { padding: 0; }
       @page { margin: 0.75in; }
     }
@@ -1700,7 +1712,10 @@ function exportPDF() {
     </div>
   </div>
 
-  <button class="print-btn no-print" onclick="window.print()">🖨️ Save as PDF</button>
+  <div class="action-bar">
+    <button class="back-btn" onclick="window.close()">← Back to GymLog</button>
+    <button class="print-btn" onclick="window.print()">🖨️ Save as PDF</button>
+  </div>
 
   <div class="stats-row">
     <div class="stat-card">
