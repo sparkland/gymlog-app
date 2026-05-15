@@ -845,8 +845,8 @@ function renderExercisesList() {
 
     entry.innerHTML = `
       <span class="exercise-entry-name">${ex.name}</span>
-      <span class="exercise-type-badge exercise-type-badge--${ex.type}">${ex.type === 'strength' ? 'Strength' : 'Cardio'}</span>
       ${indicators.length ? `<span class="exercise-entry-indicators">${indicators.join('')}</span>` : ''}
+      <span class="exercise-type-badge exercise-type-badge--${ex.type}">${ex.type === 'strength' ? 'Strength' : 'Cardio'}</span>
       ${!ex.isDefault ? `<button class="exercise-delete-btn" data-id="${ex.id}" title="Delete exercise">✕</button>` : ''}
     `;
 
