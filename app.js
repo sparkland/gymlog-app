@@ -31,14 +31,28 @@ const DEFAULT_TYPES = [
       { id:'default-1-7', name:'Triceps',  isDefault:true },
     ],
   },
-  { id:'default-2',  name:'Cardio',    emoji:'🫀', color:'#ef4444', isDefault:true, subtypes:[] },
-  { id:'default-3',  name:'HIIT',      emoji:'⚡', color:'#f97316', isDefault:true, subtypes:[] },
+  { id:'default-2',  name:'Cardio',    emoji:'🫀', color:'#ef4444', isDefault:true, subtypes:[
+    { id:'default-2-1',  name:'Walking',    isDefault:true },
+  ]},
+  { id:'default-3',  name:'HIIT',      emoji:'⚡', color:'#f97316', isDefault:true, subtypes:[
+    { id:'default-3-1',  name:'Circuits',   isDefault:true },
+    { id:'default-3-2',  name:'Hyrox',      isDefault:true },
+  ]},
   { id:'default-4',  name:'Yoga',      emoji:'🧘', color:'#a855f7', isDefault:true, subtypes:[] },
   { id:'default-5',  name:'Pilates',   emoji:'🤸', color:'#ec4899', isDefault:true, subtypes:[] },
-  { id:'default-6',  name:'Running',   emoji:'🏃', color:'#22c55e', isDefault:true, subtypes:[] },
-  { id:'default-7',  name:'Cycling',   emoji:'🚴', color:'#eab308', isDefault:true, subtypes:[] },
+  { id:'default-6',  name:'Running',   emoji:'🏃', color:'#22c55e', isDefault:true, subtypes:[
+    { id:'default-6-1',  name:'Outdoor',    isDefault:true },
+    { id:'default-6-2',  name:'Treadmill',  isDefault:true },
+  ]},
+  { id:'default-7',  name:'Cycling',   emoji:'🚴', color:'#eab308', isDefault:true, subtypes:[
+    { id:'default-7-1',  name:'Outdoor',    isDefault:true },
+    { id:'default-7-2',  name:'Spin',       isDefault:true },
+  ]},
   { id:'default-8',  name:'Swimming',  emoji:'🏊', color:'#06b6d4', isDefault:true, subtypes:[] },
-  { id:'default-9',  name:'Boxing',    emoji:'🥊', color:'#f43f5e', isDefault:true, subtypes:[] },
+  { id:'default-9',  name:'Boxing',    emoji:'🥊', color:'#f43f5e', isDefault:true, subtypes:[
+    { id:'default-9-1',  name:'Training',   isDefault:true },
+    { id:'default-9-2',  name:'Boxercise',  isDefault:true },
+  ]},
   { id:'default-10', name:'CrossFit',  emoji:'💪', color:'#10b981', isDefault:true, subtypes:[] },
   {
     id:'default-11', name:'Power Lifting', emoji:'🏆', color:'#dc2626', isDefault:true,
@@ -281,6 +295,49 @@ function migrateTypes(types) {
     defaults.forEach(ds => {
       if (!st.subtypes.find(s => s.id === ds.id)) st.subtypes.push(ds);
     });
+  }
+
+  // Ensure Cardio has its default subtypes
+  const cardio = types.find(t => t.id === 'default-2');
+  if (cardio) {
+    [{ id:'default-2-1', name:'Walking', isDefault:true }]
+      .forEach(ds => { if (!cardio.subtypes.find(s => s.id === ds.id)) cardio.subtypes.push(ds); });
+  }
+
+  // Ensure HIIT has its default subtypes
+  const hiit = types.find(t => t.id === 'default-3');
+  if (hiit) {
+    [
+      { id:'default-3-1', name:'Circuits', isDefault:true },
+      { id:'default-3-2', name:'Hyrox',    isDefault:true },
+    ].forEach(ds => { if (!hiit.subtypes.find(s => s.id === ds.id)) hiit.subtypes.push(ds); });
+  }
+
+  // Ensure Running has its default subtypes
+  const running = types.find(t => t.id === 'default-6');
+  if (running) {
+    [
+      { id:'default-6-1', name:'Outdoor',   isDefault:true },
+      { id:'default-6-2', name:'Treadmill', isDefault:true },
+    ].forEach(ds => { if (!running.subtypes.find(s => s.id === ds.id)) running.subtypes.push(ds); });
+  }
+
+  // Ensure Cycling has its default subtypes
+  const cycling = types.find(t => t.id === 'default-7');
+  if (cycling) {
+    [
+      { id:'default-7-1', name:'Outdoor', isDefault:true },
+      { id:'default-7-2', name:'Spin',    isDefault:true },
+    ].forEach(ds => { if (!cycling.subtypes.find(s => s.id === ds.id)) cycling.subtypes.push(ds); });
+  }
+
+  // Ensure Boxing has its default subtypes
+  const boxing = types.find(t => t.id === 'default-9');
+  if (boxing) {
+    [
+      { id:'default-9-1', name:'Training',   isDefault:true },
+      { id:'default-9-2', name:'Boxercise',  isDefault:true },
+    ].forEach(ds => { if (!boxing.subtypes.find(s => s.id === ds.id)) boxing.subtypes.push(ds); });
   }
 
   // Add Power Lifting if missing
@@ -845,8 +902,8 @@ function renderExercisesList() {
 
     entry.innerHTML = `
       <span class="exercise-entry-name">${ex.name}</span>
-      <span class="exercise-type-badge exercise-type-badge--${ex.type}">${ex.type === 'strength' ? 'Strength' : 'Cardio'}</span>
       ${indicators.length ? `<span class="exercise-entry-indicators">${indicators.join('')}</span>` : ''}
+      <span class="exercise-type-badge exercise-type-badge--${ex.type}">${ex.type === 'strength' ? 'Strength' : 'Cardio'}</span>
       ${!ex.isDefault ? `<button class="exercise-delete-btn" data-id="${ex.id}" title="Delete exercise">✕</button>` : ''}
     `;
 
@@ -1610,11 +1667,16 @@ function exportPDF() {
       color: #64748b;
       margin-bottom: 12px;
     }
-    .print-btn {
+    .action-bar {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      margin-bottom: 24px;
+    }
+    .print-btn, .back-btn {
       display: inline-flex;
       align-items: center;
       gap: 8px;
-      margin-bottom: 24px;
       background: #6366f1;
       color: #fff;
       border: none;
@@ -1623,9 +1685,16 @@ function exportPDF() {
       font-size: 0.9375rem;
       font-weight: 600;
       cursor: pointer;
+      text-decoration: none;
     }
+    .back-btn {
+      background: #1e293b;
+      color: #94a3b8;
+      border: 1px solid rgba(255,255,255,0.08);
+    }
+    .back-btn:hover { background: #334155; color: #f1f5f9; }
     @media print {
-      .print-btn { display: none; }
+      .action-bar { display: none; }
       body { padding: 0; }
       @page { margin: 0.75in; }
     }
@@ -1643,7 +1712,10 @@ function exportPDF() {
     </div>
   </div>
 
-  <button class="print-btn no-print" onclick="window.print()">🖨️ Save as PDF</button>
+  <div class="action-bar">
+    <button class="back-btn" onclick="window.close()">← Back to GymLog</button>
+    <button class="print-btn" onclick="window.print()">🖨️ Save as PDF</button>
+  </div>
 
   <div class="stats-row">
     <div class="stat-card">
