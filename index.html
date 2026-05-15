@@ -10,7 +10,7 @@
   <meta http-equiv="Pragma" content="no-cache">
   <meta http-equiv="Expires" content="0">
   <title>GymLog</title>
-  <link rel="stylesheet" href="styles.css?v=11">
+  <link rel="stylesheet" href="styles.css?v=12">
 </head>
 <body>
 
@@ -109,6 +109,14 @@
         rows="3"
       ></textarea>
 
+      <div class="session-exercises-section" id="session-exercises-section">
+        <div class="session-exercises-header">
+          <span class="section-label" style="margin:0;font-size:0.6875rem">Exercises</span>
+          <button class="btn-add-exercise" id="btn-add-exercise-to-session">+ Add Exercise</button>
+        </div>
+        <div id="session-exercises-list"></div>
+      </div>
+
       <div class="session-actions">
         <button class="btn-primary" id="btn-finish-session">
           Finish Session
@@ -120,18 +128,37 @@
     </div>
   </div>
 
-  <!-- ═══════════════ SESSION TYPES VIEW ═══════════════ -->
-  <div id="view-types" class="view">
+  <!-- ═══════════════ EXERCISES VIEW ═══════════════ -->
+  <div id="view-exercises" class="view">
 
     <div class="view-header">
-      <h1>Session Types</h1>
-      <p>Manage your training categories</p>
+      <h1>Exercises</h1>
+      <p>Session types &amp; exercise library</p>
     </div>
 
-    <button class="add-type-btn" id="btn-open-add-type">+ Add New Type</button>
+    <div class="segment-control" id="exercises-segment">
+      <button class="segment-btn segment-btn--active" data-segment="session-types">Session Types</button>
+      <button class="segment-btn" data-segment="exercises-library">Exercises</button>
+    </div>
 
-    <div class="section-label">All Types</div>
-    <div class="types-list" id="types-list"></div>
+    <!-- Session Types segment -->
+    <div class="segment-panel" id="panel-session-types">
+      <button class="add-type-btn" id="btn-open-add-type">+ Add New Type</button>
+      <div class="section-label" style="padding: 0 20px">All Types</div>
+      <div class="types-list" id="types-list"></div>
+    </div>
+
+    <!-- Exercises Library segment -->
+    <div class="segment-panel segment-panel--hidden" id="panel-exercises-library">
+      <div class="filter-pills" id="exercise-filter-pills">
+        <button class="filter-pill filter-pill--active" data-filter="all">All</button>
+        <button class="filter-pill" data-filter="strength">Strength</button>
+        <button class="filter-pill" data-filter="cardio">Cardio</button>
+      </div>
+      <button class="add-type-btn" id="btn-open-add-exercise">+ Add Exercise</button>
+      <div class="section-label" style="padding: 0 20px">Exercise Library</div>
+      <div class="exercises-list" id="exercises-list"></div>
+    </div>
 
   </div>
 
@@ -180,9 +207,9 @@
       <span class="nav-icon">🏠</span>
       Home
     </button>
-    <button data-nav="types">
+    <button data-nav="exercises">
       <span class="nav-icon">🏋️</span>
-      Sessions
+      Exercises
     </button>
     <button data-nav="reports">
       <span class="nav-icon">📊</span>
@@ -323,7 +350,7 @@
     <div class="about-hero">
       <div class="about-hero-icon">🏋️</div>
       <h2 class="about-app-name">Gym<span>Log</span></h2>
-      <p class="about-version">version 1.2</p>
+      <p class="about-version">version 1.3</p>
     </div>
     <div class="settings-section">
       <div class="settings-section-label">Creator</div>
@@ -344,7 +371,20 @@
       <div class="settings-card release-notes">
         <div class="release-version">
           <div class="release-version-header">
-            <span class="release-badge">v1.2</span>
+            <span class="release-badge">v1.3</span>
+            <span class="release-version-title">Exercise Library &amp; Inline Logging</span>
+          </div>
+          <ul class="release-list">
+            <li>Added Exercise Library with 30 default exercises</li>
+            <li>Added ability to create custom exercises</li>
+            <li>Added inline exercise and set logging during active sessions</li>
+            <li>Session history now shows exercise summaries in Reports</li>
+            <li>JSON and PDF exports include exercise data</li>
+          </ul>
+        </div>
+        <div class="release-version">
+          <div class="release-version-header">
+            <span class="release-badge release-badge--muted">v1.2</span>
             <span class="release-version-title">Settings &amp; Data Management</span>
           </div>
           <ul class="release-list">
@@ -354,7 +394,7 @@
         </div>
         <div class="release-version">
           <div class="release-version-header">
-            <span class="release-badge">v1.1</span>
+            <span class="release-badge release-badge--muted">v1.1</span>
             <span class="release-version-title">Exports &amp; Subtypes</span>
           </div>
           <ul class="release-list">
@@ -488,6 +528,108 @@
     </div>
   </div>
 
+  <!-- ═══════════════ ADD CUSTOM EXERCISE MODAL ═══════════════ -->
+  <div class="modal" id="modal-add-custom-exercise">
+    <div class="modal-handle"></div>
+    <h2>New Exercise</h2>
+    <div class="modal-form">
+      <div class="form-group">
+        <label for="new-exercise-name">Name</label>
+        <input type="text" id="new-exercise-name" placeholder="e.g. Bulgarian Split Squat" maxlength="40">
+      </div>
+      <div class="form-group">
+        <label>Type</label>
+        <div class="radio-row-group">
+          <label class="radio-row">
+            <span class="radio-row-label">Strength</span>
+            <input type="radio" name="new-exercise-type" value="strength" id="ex-type-strength" checked>
+            <span class="radio-custom"></span>
+          </label>
+          <label class="radio-row">
+            <span class="radio-row-label">Cardio</span>
+            <input type="radio" name="new-exercise-type" value="cardio" id="ex-type-cardio">
+            <span class="radio-custom"></span>
+          </label>
+        </div>
+      </div>
+      <div class="form-group" id="new-exercise-weight-group">
+        <label class="toggle-row">
+          <span class="toggle-label">Track Weight?</span>
+          <div class="toggle-switch">
+            <input type="checkbox" id="new-exercise-track-weight" checked>
+            <span class="toggle-thumb"></span>
+          </div>
+        </label>
+      </div>
+      <div class="form-group" id="new-exercise-distance-group" style="display:none">
+        <label class="toggle-row">
+          <span class="toggle-label">Track Distance?</span>
+          <div class="toggle-switch">
+            <input type="checkbox" id="new-exercise-track-distance">
+            <span class="toggle-thumb"></span>
+          </div>
+        </label>
+      </div>
+      <div class="modal-actions">
+        <button class="btn-primary" id="btn-save-exercise">Save Exercise</button>
+        <button class="btn-secondary" id="btn-cancel-exercise">Cancel</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ═══════════════ PICK EXERCISE MODAL ═══════════════ -->
+  <div class="modal modal--tall" id="modal-pick-exercise">
+    <div class="modal-handle"></div>
+    <h2>Add Exercise</h2>
+    <div class="filter-pills filter-pills--modal" id="pick-exercise-filter-pills">
+      <button class="filter-pill filter-pill--active" data-filter="all">All</button>
+      <button class="filter-pill" data-filter="strength">Strength</button>
+      <button class="filter-pill" data-filter="cardio">Cardio</button>
+    </div>
+    <div class="modal-exercise-scroll" id="pick-exercise-list"></div>
+  </div>
+
+  <!-- ═══════════════ LOG SET MODAL ═══════════════ -->
+  <div class="modal" id="modal-log-set">
+    <div class="modal-handle"></div>
+    <div class="modal-set-header" id="modal-set-header"></div>
+
+    <div id="set-fields-strength">
+      <div class="modal-form">
+        <div class="form-group">
+          <label for="set-reps">Reps</label>
+          <input type="number" id="set-reps" min="1" max="9999" placeholder="e.g. 10">
+        </div>
+        <div class="form-group" id="set-weight-group">
+          <label for="set-weight" id="set-weight-label">Weight (kg)</label>
+          <input type="number" id="set-weight" min="0" step="0.5" placeholder="e.g. 60">
+        </div>
+      </div>
+    </div>
+
+    <div id="set-fields-cardio" style="display:none">
+      <div class="modal-form">
+        <div class="form-group">
+          <label for="set-duration">Time (MM:SS)</label>
+          <input type="text" id="set-duration" placeholder="e.g. 12:30" maxlength="5">
+        </div>
+        <div class="form-group" id="set-distance-group">
+          <label for="set-distance" id="set-distance-label">Distance (km)</label>
+          <input type="number" id="set-distance" min="0" step="0.01" placeholder="e.g. 5.0">
+        </div>
+        <div class="form-group">
+          <label for="set-calories">Calories</label>
+          <input type="number" id="set-calories" min="0" placeholder="e.g. 300">
+        </div>
+      </div>
+    </div>
+
+    <div class="modal-actions" style="margin-top:16px">
+      <button class="btn-primary" id="btn-log-set">Log Set</button>
+      <button class="btn-secondary" id="btn-cancel-set">Cancel</button>
+    </div>
+  </div>
+
   <!-- ═══════════════ ADD TYPE MODAL ═══════════════ -->
   <div class="modal-backdrop" id="modal-backdrop"></div>
 
@@ -517,7 +659,7 @@
     </div>
   </div>
 
-  <script src="app.js?v=11"></script>
+  <script src="app.js?v=12"></script>
   <script>
     // Register service worker for network-first caching (requires HTTPS or localhost).
     // The SW never touches localStorage — all user data (sessions, name, units) is safe.

@@ -1595,3 +1595,396 @@ body {
 
   .type-grid { grid-template-columns: repeat(auto-fill, minmax(100px, 1fr)); }
 }
+
+/* ═══════════════════════════════════════════════════════════════
+   EXERCISE LIBRARY v1.3
+   ═══════════════════════════════════════════════════════════════ */
+
+/* ─── Segment Control ─────────────────────────────────────────── */
+.segment-control {
+  display: flex;
+  margin: 12px 20px 16px;
+  background: var(--bg-card);
+  border-radius: var(--radius-md);
+  padding: 4px;
+  gap: 4px;
+}
+.segment-btn {
+  flex: 1;
+  background: transparent;
+  border: none;
+  border-radius: var(--radius-sm);
+  color: var(--text-secondary);
+  font-size: 0.875rem;
+  font-weight: 600;
+  padding: 8px 12px;
+  cursor: pointer;
+  transition: background var(--transition), color var(--transition);
+  -webkit-tap-highlight-color: transparent;
+}
+.segment-btn--active {
+  background: var(--bg-elevated);
+  color: var(--text-primary);
+}
+
+/* ─── Segment Panels ─────────────────────────────────────────── */
+.segment-panel { }
+.segment-panel--hidden { display: none; }
+
+/* ─── Filter Pills ───────────────────────────────────────────── */
+.filter-pills {
+  display: flex;
+  gap: 8px;
+  padding: 0 20px 12px;
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+}
+.filter-pills--modal {
+  padding: 8px 0 12px;
+}
+.filter-pill {
+  flex-shrink: 0;
+  background: var(--bg-card);
+  border: 1.5px solid var(--border);
+  border-radius: 20px;
+  color: var(--text-secondary);
+  font-size: 0.8125rem;
+  font-weight: 600;
+  padding: 6px 16px;
+  cursor: pointer;
+  transition: border-color var(--transition), color var(--transition), background var(--transition);
+  -webkit-tap-highlight-color: transparent;
+}
+.filter-pill--active {
+  border-color: var(--accent);
+  color: var(--accent);
+  background: var(--accent-soft);
+}
+
+/* ─── Exercise Library Cards ─────────────────────────────────── */
+.exercises-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 0 20px 24px;
+}
+.exercise-entry {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  background: var(--bg-card);
+  border-radius: var(--radius-md);
+  padding: 12px 14px;
+  box-shadow: var(--shadow-card);
+}
+.exercise-entry-name {
+  flex: 1;
+  font-size: 0.9375rem;
+  font-weight: 600;
+  color: var(--text-primary);
+}
+.exercise-type-badge {
+  font-size: 0.6875rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  padding: 3px 8px;
+  border-radius: 20px;
+  flex-shrink: 0;
+}
+.exercise-type-badge--strength {
+  background: rgba(99, 102, 241, 0.15);
+  color: #818cf8;
+}
+.exercise-type-badge--cardio {
+  background: rgba(239, 68, 68, 0.12);
+  color: #f87171;
+}
+.exercise-entry-indicators {
+  display: flex;
+  gap: 4px;
+  font-size: 0.875rem;
+}
+.exercise-delete-btn {
+  background: none;
+  border: none;
+  color: var(--text-muted);
+  font-size: 0.875rem;
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  flex-shrink: 0;
+  transition: background var(--transition), color var(--transition);
+  -webkit-tap-highlight-color: transparent;
+}
+.exercise-delete-btn:hover,
+.exercise-delete-btn:active {
+  background: var(--danger-soft);
+  color: var(--danger);
+}
+
+/* ─── Active Session Exercises ───────────────────────────────── */
+.session-exercises-section {
+  margin-top: 12px;
+  margin-bottom: 4px;
+}
+.session-exercises-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 10px;
+}
+.btn-add-exercise {
+  background: var(--accent-soft);
+  border: 1.5px solid var(--accent);
+  border-radius: var(--radius-md);
+  color: var(--accent);
+  font-size: 0.8125rem;
+  font-weight: 600;
+  padding: 6px 14px;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+  transition: background var(--transition);
+}
+.btn-add-exercise:active {
+  background: rgba(99, 102, 241, 0.25);
+}
+.exercise-empty-hint {
+  font-size: 0.8125rem;
+  color: var(--text-muted);
+  text-align: center;
+  padding: 12px 0;
+  margin: 0;
+}
+.active-exercise-card {
+  background: var(--bg-elevated);
+  border-radius: var(--radius-md);
+  padding: 12px 14px;
+  margin-bottom: 8px;
+}
+.active-exercise-card-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 8px;
+}
+.active-exercise-card-name {
+  flex: 1;
+  font-size: 0.9375rem;
+  font-weight: 600;
+  color: var(--text-primary);
+}
+.active-exercise-sets {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  margin-bottom: 8px;
+}
+.active-set-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 0.8125rem;
+  color: var(--text-secondary);
+}
+.active-set-label {
+  font-weight: 600;
+  color: var(--text-muted);
+  font-size: 0.75rem;
+  min-width: 38px;
+}
+.active-set-values { flex: 1; }
+.set-delete-btn {
+  background: none;
+  border: none;
+  color: var(--text-muted);
+  font-size: 0.75rem;
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  flex-shrink: 0;
+  -webkit-tap-highlight-color: transparent;
+  transition: color var(--transition);
+}
+.set-delete-btn:hover,
+.set-delete-btn:active { color: var(--danger); }
+.btn-add-set {
+  background: none;
+  border: 1px dashed var(--border);
+  border-radius: var(--radius-sm);
+  color: var(--text-muted);
+  font-size: 0.8125rem;
+  font-weight: 600;
+  padding: 6px 12px;
+  width: 100%;
+  cursor: pointer;
+  transition: border-color var(--transition), color var(--transition);
+  -webkit-tap-highlight-color: transparent;
+}
+.btn-add-set:hover,
+.btn-add-set:active {
+  border-color: var(--accent);
+  color: var(--accent);
+}
+
+/* ─── Exercise Picker Modal ──────────────────────────────────── */
+.modal--tall {
+  max-height: 80vh;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+.modal--tall.open {
+  transform: translateX(-50%) translateY(0);
+}
+.modal-exercise-scroll {
+  flex: 1;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+  margin-top: 4px;
+}
+.pick-exercise-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 0;
+  border-bottom: 1px solid var(--border);
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+  transition: background var(--transition);
+}
+.pick-exercise-row:last-child { border-bottom: none; }
+.pick-exercise-row:active { opacity: 0.7; }
+.pick-exercise-row-name {
+  flex: 1;
+  font-size: 0.9375rem;
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+/* ─── Toggle Switch ──────────────────────────────────────────── */
+.toggle-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  cursor: pointer;
+  padding: 4px 0;
+}
+.toggle-label {
+  font-size: 0.9375rem;
+  color: var(--text-primary);
+}
+.toggle-switch {
+  position: relative;
+  width: 44px;
+  height: 26px;
+  flex-shrink: 0;
+}
+.toggle-switch input {
+  opacity: 0;
+  width: 0;
+  height: 0;
+  position: absolute;
+}
+.toggle-thumb {
+  position: absolute;
+  inset: 0;
+  background: var(--bg-elevated);
+  border-radius: 13px;
+  border: 1.5px solid var(--border);
+  transition: background var(--transition), border-color var(--transition);
+}
+.toggle-thumb::after {
+  content: '';
+  position: absolute;
+  left: 3px;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 18px;
+  height: 18px;
+  background: var(--text-muted);
+  border-radius: 50%;
+  transition: transform var(--transition), background var(--transition);
+}
+.toggle-switch input:checked + .toggle-thumb {
+  background: var(--accent-soft);
+  border-color: var(--accent);
+}
+.toggle-switch input:checked + .toggle-thumb::after {
+  transform: translateX(18px) translateY(-50%);
+  background: var(--accent);
+}
+
+/* ─── Radio Row Group ────────────────────────────────────────── */
+.radio-row-group {
+  background: var(--bg-elevated);
+  border-radius: var(--radius-md);
+  overflow: hidden;
+}
+
+/* ─── Set Logger Modal ───────────────────────────────────────── */
+.modal-set-header {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 16px;
+  flex-wrap: wrap;
+}
+.modal-set-exercise-name {
+  font-size: 1rem;
+  font-weight: 700;
+  color: var(--text-primary);
+}
+
+/* ─── Reports Exercise Summary ───────────────────────────────── */
+.session-exercise-summary {
+  margin-top: 8px;
+  padding-top: 8px;
+  border-top: 1px solid var(--border);
+}
+.session-exercise-toggle {
+  background: none;
+  border: none;
+  color: var(--text-secondary);
+  font-size: 0.8125rem;
+  font-weight: 600;
+  cursor: pointer;
+  padding: 4px 0;
+  -webkit-tap-highlight-color: transparent;
+}
+.session-exercise-detail {
+  margin-top: 10px;
+}
+.report-exercise-block {
+  margin-bottom: 10px;
+}
+.report-exercise-name {
+  font-size: 0.8125rem;
+  font-weight: 600;
+  color: var(--text-primary);
+  margin-bottom: 4px;
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 4px;
+}
+.report-set-row {
+  display: flex;
+  gap: 10px;
+  font-size: 0.75rem;
+  color: var(--text-secondary);
+  padding: 2px 0;
+}
+.report-set-number {
+  min-width: 40px;
+  color: var(--text-muted);
+  font-weight: 600;
+}
