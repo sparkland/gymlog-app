@@ -663,6 +663,7 @@ body {
   padding: 14px 16px;
   display: flex;
   align-items: center;
+  flex-wrap: wrap;
   gap: 14px;
   box-shadow: var(--shadow-card);
 }
@@ -1946,25 +1947,36 @@ body {
 
 /* ─── Reports Exercise Summary ───────────────────────────────── */
 .session-exercise-summary {
-  margin-top: 8px;
+  flex: 0 0 100%;
+  margin-top: 0;
   padding-top: 8px;
   border-top: 1px solid var(--border);
 }
 .session-exercise-toggle {
   background: none;
   border: none;
-  color: var(--text-secondary);
+  color: var(--accent);
   font-size: 0.8125rem;
   font-weight: 600;
   cursor: pointer;
   padding: 4px 0;
+  width: 100%;
+  text-align: left;
   -webkit-tap-highlight-color: transparent;
 }
 .session-exercise-detail {
-  margin-top: 10px;
+  margin-top: 8px;
+  padding-bottom: 2px;
 }
 .report-exercise-block {
-  margin-bottom: 10px;
+  margin-bottom: 12px;
+  padding-bottom: 12px;
+  border-bottom: 1px solid var(--border);
+}
+.report-exercise-block:last-child {
+  margin-bottom: 0;
+  padding-bottom: 0;
+  border-bottom: none;
 }
 .report-exercise-name {
   font-size: 0.8125rem;
@@ -1987,4 +1999,27 @@ body {
   min-width: 40px;
   color: var(--text-muted);
   font-weight: 600;
+}
+
+/* ── Toast notification ───────────────────────────────────────── */
+.toast {
+  position: fixed;
+  bottom: calc(var(--nav-height) + 16px);
+  left: 50%;
+  transform: translateX(-50%) translateY(20px);
+  background: #ef4444;
+  color: #fff;
+  font-size: 0.875rem;
+  font-weight: 600;
+  padding: 10px 20px;
+  border-radius: 100px;
+  white-space: nowrap;
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity 0.18s ease, transform 0.18s ease;
+  z-index: 9999;
+}
+.toast--visible {
+  opacity: 1;
+  transform: translateX(-50%) translateY(0);
 }

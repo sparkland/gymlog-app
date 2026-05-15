@@ -211,6 +211,17 @@ function todayISO() {
   return new Date().toISOString().slice(0, 10);
 }
 
+// ─── Toast notification ───────────────────────────────────────
+let _toastTimer = null;
+function showToast(message, duration = 2500) {
+  const el = document.getElementById('toast');
+  if (!el) return;
+  el.textContent = message;
+  el.classList.add('toast--visible');
+  clearTimeout(_toastTimer);
+  _toastTimer = setTimeout(() => el.classList.remove('toast--visible'), duration);
+}
+
 function nowHHMM() {
   return new Date().toTimeString().slice(0, 5);
 }
@@ -1067,7 +1078,11 @@ function handleLogSet() {
 
   if (ex.type === 'strength') {
     const reps = parseInt(document.getElementById('set-reps').value, 10);
-    if (!reps || reps < 1) { document.getElementById('set-reps').focus(); return; }
+    if (!reps || reps < 1) {
+      showToast('Please enter a reps value');
+      document.getElementById('set-reps').focus();
+      return;
+    }
     const weightVal = document.getElementById('set-weight').value;
     set = {
       reps,
@@ -1077,6 +1092,7 @@ function handleLogSet() {
   } else {
     const duration = document.getElementById('set-duration').value.trim();
     if (!duration || !/^\d{1,2}:\d{2}$/.test(duration)) {
+      showToast('Please enter duration as MM:SS (e.g. 5:30)');
       document.getElementById('set-duration').focus();
       return;
     }
