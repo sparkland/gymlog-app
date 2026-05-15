@@ -7,6 +7,7 @@ const STORAGE_KEYS = {
   ACTIVE:   'gym_active_session',
   USER_NAME:'gym_user_name',
   UNITS:    'gym_units',
+  EXERCISES: 'gym_exercises',
 };
 
 const DEFAULT_UNITS = { weight: 'kg', distance: 'km' };
@@ -47,6 +48,39 @@ const DEFAULT_TYPES = [
       { id:'default-11-3', name:'Squat',    isDefault:true },
     ],
   },
+];
+
+const DEFAULT_EXERCISES = [
+  { id:'ex-s-01', name:'Bench Press',        type:'strength', trackWeight:true,  trackDistance:false, isDefault:true },
+  { id:'ex-s-02', name:'Squat',              type:'strength', trackWeight:true,  trackDistance:false, isDefault:true },
+  { id:'ex-s-03', name:'Deadlift',           type:'strength', trackWeight:true,  trackDistance:false, isDefault:true },
+  { id:'ex-s-04', name:'Pull-Up',            type:'strength', trackWeight:false, trackDistance:false, isDefault:true },
+  { id:'ex-s-05', name:'Barbell Row',        type:'strength', trackWeight:true,  trackDistance:false, isDefault:true },
+  { id:'ex-s-06', name:'Overhead Press',     type:'strength', trackWeight:true,  trackDistance:false, isDefault:true },
+  { id:'ex-s-07', name:'Dumbbell Curl',      type:'strength', trackWeight:true,  trackDistance:false, isDefault:true },
+  { id:'ex-s-08', name:'Tricep Pushdown',    type:'strength', trackWeight:true,  trackDistance:false, isDefault:true },
+  { id:'ex-s-09', name:'Leg Press',          type:'strength', trackWeight:true,  trackDistance:false, isDefault:true },
+  { id:'ex-s-10', name:'Lat Pulldown',       type:'strength', trackWeight:true,  trackDistance:false, isDefault:true },
+  { id:'ex-s-11', name:'Romanian Deadlift',  type:'strength', trackWeight:true,  trackDistance:false, isDefault:true },
+  { id:'ex-s-12', name:'Lunges',             type:'strength', trackWeight:true,  trackDistance:false, isDefault:true },
+  { id:'ex-s-13', name:'Plank',              type:'strength', trackWeight:false, trackDistance:false, isDefault:true },
+  { id:'ex-s-14', name:'Cable Fly',          type:'strength', trackWeight:true,  trackDistance:false, isDefault:true },
+  { id:'ex-s-15', name:'Leg Curl',           type:'strength', trackWeight:true,  trackDistance:false, isDefault:true },
+  { id:'ex-s-16', name:'Leg Extension',      type:'strength', trackWeight:true,  trackDistance:false, isDefault:true },
+  { id:'ex-s-17', name:'Seated Row',         type:'strength', trackWeight:true,  trackDistance:false, isDefault:true },
+  { id:'ex-s-18', name:'Face Pull',          type:'strength', trackWeight:true,  trackDistance:false, isDefault:true },
+  { id:'ex-s-19', name:'Hip Thrust',         type:'strength', trackWeight:true,  trackDistance:false, isDefault:true },
+  { id:'ex-s-20', name:'Arnold Press',       type:'strength', trackWeight:true,  trackDistance:false, isDefault:true },
+  { id:'ex-c-01', name:'Running',            type:'cardio',   trackWeight:false, trackDistance:true,  isDefault:true },
+  { id:'ex-c-02', name:'Cycling',            type:'cardio',   trackWeight:false, trackDistance:true,  isDefault:true },
+  { id:'ex-c-03', name:'Rowing',             type:'cardio',   trackWeight:false, trackDistance:true,  isDefault:true },
+  { id:'ex-c-04', name:'Swimming',           type:'cardio',   trackWeight:false, trackDistance:true,  isDefault:true },
+  { id:'ex-c-05', name:'Jump Rope',          type:'cardio',   trackWeight:false, trackDistance:false, isDefault:true },
+  { id:'ex-c-06', name:'Stair Climber',      type:'cardio',   trackWeight:false, trackDistance:false, isDefault:true },
+  { id:'ex-c-07', name:'Elliptical',         type:'cardio',   trackWeight:false, trackDistance:true,  isDefault:true },
+  { id:'ex-c-08', name:'Treadmill Walk',     type:'cardio',   trackWeight:false, trackDistance:true,  isDefault:true },
+  { id:'ex-c-09', name:'Battle Ropes',       type:'cardio',   trackWeight:false, trackDistance:false, isDefault:true },
+  { id:'ex-c-10', name:'Box Jumps',          type:'cardio',   trackWeight:false, trackDistance:false, isDefault:true },
 ];
 
 // ─── Storage Layer ────────────────────────────────────────────
@@ -112,6 +146,43 @@ const Storage = {
     type.subtypes = (type.subtypes || []).filter(s => s.id !== subtypeId);
     Storage.saveTypes(types);
   },
+  getExercises() {
+    const raw = localStorage.getItem(STORAGE_KEYS.EXERCISES);
+    return raw ? JSON.parse(raw) : null;
+  },
+  saveExercises(arr) { localStorage.setItem(STORAGE_KEYS.EXERCISES, JSON.stringify(arr)); },
+  addExercise(ex) {
+    const list = Storage.getExercises() || [];
+    list.push(ex);
+    Storage.saveExercises(list);
+  },
+  deleteExercise(id) {
+    const list = (Storage.getExercises() || []).filter(e => e.id !== id);
+    Storage.saveExercises(list);
+  },
+  addExerciseToActive(entry) {
+    const active = Storage.getActive();
+    if (!active) return;
+    active.exercises = active.exercises || [];
+    active.exercises.push(entry);
+    Storage.saveActive(active);
+  },
+  addSetToActiveExercise(exerciseId, set) {
+    const active = Storage.getActive();
+    if (!active) return;
+    const ex = (active.exercises || []).find(e => e.exerciseId === exerciseId);
+    if (!ex) return;
+    ex.sets.push(set);
+    Storage.saveActive(active);
+  },
+  deleteSetFromActiveExercise(exerciseId, setIndex) {
+    const active = Storage.getActive();
+    if (!active) return;
+    const ex = (active.exercises || []).find(e => e.exerciseId === exerciseId);
+    if (!ex) return;
+    ex.sets.splice(setIndex, 1);
+    Storage.saveActive(active);
+  },
 };
 
 // ─── App State ────────────────────────────────────────────────
@@ -125,6 +196,10 @@ const state = {
   expandedTypeId:      null,
   addSubtypeForTypeId: null,
   notesSessionId:      null,
+  exercisesSegment:   'session-types',
+  exerciseFilterType: 'all',
+  pickExerciseFilter: 'all',
+  logSetExerciseId:   null,
 };
 
 // ─── Utility ──────────────────────────────────────────────────
@@ -134,6 +209,17 @@ function generateId() {
 
 function todayISO() {
   return new Date().toISOString().slice(0, 10);
+}
+
+// ─── Toast notification ───────────────────────────────────────
+let _toastTimer = null;
+function showToast(message, duration = 2500) {
+  const el = document.getElementById('toast');
+  if (!el) return;
+  el.textContent = message;
+  el.classList.add('toast--visible');
+  clearTimeout(_toastTimer);
+  _toastTimer = setTimeout(() => el.classList.remove('toast--visible'), duration);
 }
 
 function nowHHMM() {
@@ -221,6 +307,13 @@ function migrateTypes(types) {
   return types;
 }
 
+function migrateExercises(existing) {
+  DEFAULT_EXERCISES.forEach(def => {
+    if (!existing.find(e => e.id === def.id)) existing.push(def);
+  });
+  return existing;
+}
+
 // ─── Router ───────────────────────────────────────────────────
 // Sub-views that live under the Settings tab
 const SETTINGS_SUB_VIEWS = new Set(['units', 'data', 'about']);
@@ -237,7 +330,7 @@ function navigate(viewName) {
   state.currentView = viewName;
 
   const renderers = {
-    home: renderHome, types: renderTypes, reports: renderReports,
+    home: renderHome, exercises: renderExercises, reports: renderReports,
     settings: renderSettings, units: renderUnits, data: renderData, about: renderAbout,
   };
   if (renderers[viewName]) renderers[viewName]();
@@ -413,6 +506,7 @@ function renderActiveSession() {
   document.getElementById('session-notes').value = '';
 
   startTimer();
+  renderActiveSessionExercises();
 }
 
 // ─── Render: Session Types ────────────────────────────────────
@@ -616,6 +710,21 @@ function renderSessionsList(allSessions) {
     `;
 
     list.appendChild(card);
+
+    // Exercise summary
+    const exercises = session.exercises || [];
+    if (exercises.length > 0) {
+      const summaryDiv = document.createElement('div');
+      summaryDiv.className = 'session-exercise-summary';
+      const summaryText = `${exercises.length} exercise${exercises.length !== 1 ? 's' : ''} logged`;
+      summaryDiv.innerHTML = `
+        <button class="session-exercise-toggle"
+          data-session-id="${session.id}"
+          data-summary="${summaryText}">${summaryText} ›</button>
+        <div class="session-exercise-detail" id="ex-detail-${session.id}" style="display:none"></div>
+      `;
+      card.appendChild(summaryDiv);
+    }
   });
 
   list.querySelectorAll('.btn-view-notes').forEach(btn => {
@@ -625,6 +734,42 @@ function renderSessionsList(allSessions) {
   list.querySelectorAll('.session-delete-btn').forEach(btn => {
     btn.addEventListener('click', () => handleDeleteSession(btn.dataset.id));
   });
+
+  // Exercise summary toggles
+  list.querySelectorAll('.session-exercise-toggle').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const detailEl = document.getElementById(`ex-detail-${btn.dataset.sessionId}`);
+      if (!detailEl) return;
+      const isOpen = detailEl.style.display !== 'none';
+      detailEl.style.display = isOpen ? 'none' : 'block';
+      btn.textContent = isOpen
+        ? btn.dataset.summary + ' ›'
+        : btn.dataset.summary + ' ↑';
+      if (!isOpen && !detailEl.dataset.rendered) {
+        detailEl.dataset.rendered = '1';
+        const session = Storage.getSessions().find(s => s.id === btn.dataset.sessionId);
+        if (session) renderExerciseSummaryDetail(session, detailEl);
+      }
+    });
+  });
+}
+
+function renderExerciseSummaryDetail(session, detailEl) {
+  const exercises = session.exercises || [];
+  detailEl.innerHTML = exercises.map(ex => `
+    <div class="report-exercise-block">
+      <div class="report-exercise-name">
+        ${ex.exerciseName}
+        <span class="exercise-type-badge exercise-type-badge--${ex.exerciseType}" style="margin-left:6px">${ex.exerciseType === 'strength' ? 'Strength' : 'Cardio'}</span>
+      </div>
+      ${ex.sets.map((set, i) => `
+        <div class="report-set-row">
+          <span class="report-set-number">Set ${i + 1}</span>
+          <span>${formatSetValues(set, ex.exerciseType)}</span>
+        </div>
+      `).join('')}
+    </div>
+  `).join('');
 }
 
 // ─── Render: Settings ────────────────────────────────────────
@@ -651,6 +796,321 @@ function renderAbout() {
   // Static view — no dynamic content needed
 }
 
+// ─── Render: Exercises Tab ────────────────────────────────────
+function renderExercises() {
+  // Sync segment buttons
+  document.querySelectorAll('#exercises-segment .segment-btn').forEach(btn => {
+    btn.classList.toggle('segment-btn--active', btn.dataset.segment === state.exercisesSegment);
+  });
+  // Show/hide panels
+  const typesPanel = document.getElementById('panel-session-types');
+  const exPanel    = document.getElementById('panel-exercises-library');
+  if (state.exercisesSegment === 'session-types') {
+    typesPanel.classList.remove('segment-panel--hidden');
+    exPanel.classList.add('segment-panel--hidden');
+    renderTypes();
+  } else {
+    typesPanel.classList.add('segment-panel--hidden');
+    exPanel.classList.remove('segment-panel--hidden');
+    renderExercisesList();
+  }
+}
+
+function renderExercisesList() {
+  const list      = document.getElementById('exercises-list');
+  const exercises = (Storage.getExercises() || []).filter(ex => {
+    if (state.exerciseFilterType === 'all') return true;
+    return ex.type === state.exerciseFilterType;
+  });
+
+  // Sync filter pills
+  document.querySelectorAll('#exercise-filter-pills .filter-pill').forEach(pill => {
+    pill.classList.toggle('filter-pill--active', pill.dataset.filter === state.exerciseFilterType);
+  });
+
+  list.innerHTML = '';
+
+  if (exercises.length === 0) {
+    list.innerHTML = `<div class="empty-state"><div class="empty-state-icon">🏋️</div><h3>No exercises found</h3><p>Add a custom exercise using the button above.</p></div>`;
+    return;
+  }
+
+  exercises.forEach(ex => {
+    const entry = document.createElement('div');
+    entry.className = 'exercise-entry';
+
+    const indicators = [];
+    if (ex.type === 'strength' && ex.trackWeight)   indicators.push('⚖️');
+    if (ex.type === 'cardio'   && ex.trackDistance) indicators.push('📍');
+
+    entry.innerHTML = `
+      <span class="exercise-entry-name">${ex.name}</span>
+      <span class="exercise-type-badge exercise-type-badge--${ex.type}">${ex.type === 'strength' ? 'Strength' : 'Cardio'}</span>
+      ${indicators.length ? `<span class="exercise-entry-indicators">${indicators.join('')}</span>` : ''}
+      ${!ex.isDefault ? `<button class="exercise-delete-btn" data-id="${ex.id}" title="Delete exercise">✕</button>` : ''}
+    `;
+
+    list.appendChild(entry);
+  });
+
+  list.querySelectorAll('.exercise-delete-btn').forEach(btn => {
+    btn.addEventListener('click', () => handleDeleteExercise(btn.dataset.id));
+  });
+}
+
+function handleDeleteExercise(id) {
+  const exercises = Storage.getExercises() || [];
+  const ex = exercises.find(e => e.id === id);
+  if (!ex || ex.isDefault) return;
+  if (!confirm(`Delete "${ex.name}"? This won't affect past sessions.`)) return;
+  Storage.deleteExercise(id);
+  renderExercisesList();
+}
+
+// ─── Render: Active Session Exercises ─────────────────────────
+function formatSetValues(set, exerciseType) {
+  if (exerciseType === 'strength') {
+    let str = `${set.reps} rep${set.reps !== 1 ? 's' : ''}`;
+    if (set.weight != null && set.weight !== '') str += ` · ${set.weight}${set.weightUnit}`;
+    return str;
+  } else {
+    let str = set.duration || '';
+    if (set.distance != null && set.distance !== '') str += ` · ${set.distance}${set.distanceUnit}`;
+    if (set.calories)  str += ` · ${set.calories} kcal`;
+    return str;
+  }
+}
+
+function renderActiveSessionExercises() {
+  const listEl = document.getElementById('session-exercises-list');
+  if (!listEl) return;
+  const active = Storage.getActive();
+  const exercises = active ? (active.exercises || []) : [];
+
+  listEl.innerHTML = '';
+
+  if (exercises.length === 0) {
+    listEl.innerHTML = `<p class="exercise-empty-hint">No exercises logged yet — tap + Add Exercise to start tracking.</p>`;
+    return;
+  }
+
+  exercises.forEach(ex => {
+    const card = document.createElement('div');
+    card.className = 'active-exercise-card';
+
+    const setRows = ex.sets.map((set, i) => `
+      <div class="active-set-row">
+        <span class="active-set-label">Set ${i + 1}</span>
+        <span class="active-set-values">${formatSetValues(set, ex.exerciseType)}</span>
+        <button class="set-delete-btn" data-exercise-id="${ex.exerciseId}" data-index="${i}" title="Delete set">✕</button>
+      </div>
+    `).join('');
+
+    card.innerHTML = `
+      <div class="active-exercise-card-header">
+        <span class="active-exercise-card-name">${ex.exerciseName}</span>
+        <span class="exercise-type-badge exercise-type-badge--${ex.exerciseType}">${ex.exerciseType === 'strength' ? 'Strength' : 'Cardio'}</span>
+      </div>
+      <div class="active-exercise-sets">${setRows}</div>
+      <button class="btn-add-set" data-exercise-id="${ex.exerciseId}">+ Add Set</button>
+    `;
+
+    listEl.appendChild(card);
+  });
+
+  listEl.querySelectorAll('.btn-add-set').forEach(btn => {
+    btn.addEventListener('click', () => openLogSetModal(btn.dataset.exerciseId));
+  });
+
+  listEl.querySelectorAll('.set-delete-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+      Storage.deleteSetFromActiveExercise(btn.dataset.exerciseId, parseInt(btn.dataset.index, 10));
+      renderActiveSessionExercises();
+    });
+  });
+}
+
+// ─── Exercise Modals ──────────────────────────────────────────
+function openAddExerciseModal() {
+  document.getElementById('new-exercise-name').value = '';
+  document.getElementById('ex-type-strength').checked = true;
+  document.getElementById('new-exercise-track-weight').checked = true;
+  document.getElementById('new-exercise-track-distance').checked = false;
+  document.getElementById('new-exercise-weight-group').style.display = '';
+  document.getElementById('new-exercise-distance-group').style.display = 'none';
+  document.getElementById('modal-add-custom-exercise').classList.add('open');
+  document.getElementById('modal-backdrop').classList.add('open');
+  setTimeout(() => document.getElementById('new-exercise-name').focus(), 300);
+}
+
+function closeAddExerciseModal() {
+  document.getElementById('modal-add-custom-exercise').classList.remove('open');
+  document.getElementById('modal-backdrop').classList.remove('open');
+}
+
+function handleSaveExercise() {
+  const name = document.getElementById('new-exercise-name').value.trim();
+  if (!name) { document.getElementById('new-exercise-name').focus(); return; }
+  const type          = document.querySelector('input[name="new-exercise-type"]:checked').value;
+  const trackWeight   = type === 'strength' && document.getElementById('new-exercise-track-weight').checked;
+  const trackDistance = type === 'cardio'   && document.getElementById('new-exercise-track-distance').checked;
+  Storage.addExercise({ id: generateId(), name, type, trackWeight, trackDistance, isDefault: false });
+  closeAddExerciseModal();
+  renderExercisesList();
+}
+
+function openPickExerciseModal() {
+  state.pickExerciseFilter = 'all';
+  renderPickExerciseList();
+  document.getElementById('modal-pick-exercise').classList.add('open');
+  document.getElementById('modal-backdrop').classList.add('open');
+}
+
+function closePickExerciseModal() {
+  document.getElementById('modal-pick-exercise').classList.remove('open');
+  document.getElementById('modal-backdrop').classList.remove('open');
+}
+
+function renderPickExerciseList() {
+  const listEl    = document.getElementById('pick-exercise-list');
+  const exercises = (Storage.getExercises() || []).filter(ex => {
+    if (state.pickExerciseFilter === 'all') return true;
+    return ex.type === state.pickExerciseFilter;
+  });
+
+  // Sync filter pills
+  document.querySelectorAll('#pick-exercise-filter-pills .filter-pill').forEach(pill => {
+    pill.classList.toggle('filter-pill--active', pill.dataset.filter === state.pickExerciseFilter);
+  });
+
+  listEl.innerHTML = '';
+  exercises.forEach(ex => {
+    const row = document.createElement('div');
+    row.className = 'pick-exercise-row';
+    row.innerHTML = `
+      <span class="pick-exercise-row-name">${ex.name}</span>
+      <span class="exercise-type-badge exercise-type-badge--${ex.type}">${ex.type === 'strength' ? 'Strength' : 'Cardio'}</span>
+    `;
+    row.addEventListener('click', () => handlePickExercise(ex));
+    listEl.appendChild(row);
+  });
+}
+
+function handlePickExercise(exercise) {
+  Storage.addExerciseToActive({
+    exerciseId:   exercise.id,
+    exerciseName: exercise.name,
+    exerciseType: exercise.type,
+    sets: [],
+  });
+  closePickExerciseModal();
+  renderActiveSessionExercises();
+}
+
+function openLogSetModal(exerciseId) {
+  const exercises = Storage.getExercises() || [];
+  const ex = exercises.find(e => e.exerciseId === exerciseId) ||
+             exercises.find(e => e.id === exerciseId);
+  if (!ex) return;
+
+  state.logSetExerciseId = exerciseId;
+  const units = Storage.getUnits();
+
+  // Render header
+  document.getElementById('modal-set-header').innerHTML = `
+    <span class="modal-set-exercise-name">${ex.name}</span>
+    <span class="exercise-type-badge exercise-type-badge--${ex.type}">${ex.type === 'strength' ? 'Strength' : 'Cardio'}</span>
+  `;
+
+  // Show correct fields
+  const strengthFields = document.getElementById('set-fields-strength');
+  const cardioFields   = document.getElementById('set-fields-cardio');
+  if (ex.type === 'strength') {
+    strengthFields.style.display = '';
+    cardioFields.style.display   = 'none';
+    // Update weight label
+    const weightGroup = document.getElementById('set-weight-group');
+    if (ex.trackWeight) {
+      weightGroup.style.display = '';
+      document.getElementById('set-weight-label').textContent = `Weight (${units.weight})`;
+    } else {
+      weightGroup.style.display = 'none';
+    }
+  } else {
+    strengthFields.style.display = 'none';
+    cardioFields.style.display   = '';
+    // Update distance label
+    const distanceGroup = document.getElementById('set-distance-group');
+    if (ex.trackDistance) {
+      distanceGroup.style.display = '';
+      document.getElementById('set-distance-label').textContent = `Distance (${units.distance})`;
+    } else {
+      distanceGroup.style.display = 'none';
+    }
+  }
+
+  // Clear inputs
+  ['set-reps','set-weight','set-duration','set-distance','set-calories'].forEach(id => {
+    const el = document.getElementById(id);
+    if (el) el.value = '';
+  });
+
+  document.getElementById('modal-log-set').classList.add('open');
+  document.getElementById('modal-backdrop').classList.add('open');
+}
+
+function closeLogSetModal() {
+  state.logSetExerciseId = null;
+  document.getElementById('modal-log-set').classList.remove('open');
+  document.getElementById('modal-backdrop').classList.remove('open');
+}
+
+function handleLogSet() {
+  const exerciseId = state.logSetExerciseId;
+  if (!exerciseId) return;
+
+  const exercises = Storage.getExercises() || [];
+  const ex = exercises.find(e => e.id === exerciseId);
+  if (!ex) return;
+
+  const units = Storage.getUnits();
+  let set;
+
+  if (ex.type === 'strength') {
+    const reps = parseInt(document.getElementById('set-reps').value, 10);
+    if (!reps || reps < 1) {
+      showToast('Please enter a reps value');
+      document.getElementById('set-reps').focus();
+      return;
+    }
+    const weightVal = document.getElementById('set-weight').value;
+    set = {
+      reps,
+      weight:     ex.trackWeight && weightVal !== '' ? parseFloat(weightVal) : null,
+      weightUnit: units.weight,
+    };
+  } else {
+    const duration = document.getElementById('set-duration').value.trim();
+    if (!duration || !/^\d{1,2}:\d{2}$/.test(duration)) {
+      showToast('Please enter duration as MM:SS (e.g. 5:30)');
+      document.getElementById('set-duration').focus();
+      return;
+    }
+    const distanceVal = document.getElementById('set-distance').value;
+    const caloriesVal = document.getElementById('set-calories').value;
+    set = {
+      duration,
+      distance:     ex.trackDistance && distanceVal !== '' ? parseFloat(distanceVal) : null,
+      distanceUnit: units.distance,
+      calories:     caloriesVal !== '' ? parseInt(caloriesVal, 10) : null,
+    };
+  }
+
+  Storage.addSetToActiveExercise(exerciseId, set);
+  closeLogSetModal();
+  renderActiveSessionExercises();
+}
+
 // ─── Handlers ─────────────────────────────────────────────────
 function handleStartSession() {
   if (!state.selectedTypeId) return;
@@ -669,6 +1129,7 @@ function handleStartSession() {
     date,
     startTime,
     startTimestamp: Date.now(),
+    exercises: [],
   });
 
   document.getElementById('bottom-nav').classList.add('hidden');
@@ -699,6 +1160,7 @@ function handleFinishSession() {
     endTime,
     durationSeconds:    duration,
     notes,
+    exercises:          active.exercises || [],
   });
 
   endSession();
@@ -998,7 +1460,7 @@ function closeExportModal() {
 function exportJSON() {
   const units = Storage.getUnits();
   const payload = {
-    version: '1.1',
+    version: '1.2',
     app: 'GymLog',
     exportedAt: new Date().toISOString(),
     user: {
@@ -1010,7 +1472,8 @@ function exportJSON() {
     },
     data: {
       sessionTypes: Storage.getTypes() || [],
-      sessions: Storage.getSessions(),
+      exercises:    Storage.getExercises() || [],
+      sessions:     Storage.getSessions(),
     },
   };
   const blob = new Blob([JSON.stringify(payload, null, 2)], { type: 'application/json' });
@@ -1023,6 +1486,18 @@ function exportJSON() {
   document.body.removeChild(a);
   URL.revokeObjectURL(url);
   closeExportModal();
+}
+
+function formatSetForPDF(set, type) {
+  if (type === 'strength') {
+    let str = `${set.reps} rep${set.reps !== 1 ? 's' : ''}`;
+    if (set.weight != null) str += ` @ ${set.weight}${set.weightUnit}`;
+    return str;
+  }
+  let str = set.duration || '';
+  if (set.distance != null) str += ` · ${set.distance}${set.distanceUnit}`;
+  if (set.calories)         str += ` · ${set.calories} kcal`;
+  return str;
 }
 
 function exportPDF() {
@@ -1046,6 +1521,24 @@ function exportPDF() {
         const notesHtml = s.notes
           ? `<div style="margin-top:10px;padding:10px 14px;background:#0f172a;border-radius:8px;font-size:0.875rem;color:#cbd5e1;white-space:pre-wrap;line-height:1.6">${s.notes.replace(/</g,'&lt;').replace(/>/g,'&gt;')}</div>`
           : '';
+        const exList = s.exercises || [];
+        const exercisesHtml = exList.length === 0 ? '' : `
+          <div style="margin-top:12px;border-top:1px solid rgba(255,255,255,0.08);padding-top:10px">
+            ${exList.map(ex => `
+              <div style="margin-bottom:10px">
+                <div style="font-size:0.8125rem;font-weight:600;color:#cbd5e1;margin-bottom:4px">
+                  ${ex.exerciseName}
+                  <span style="color:#94a3b8;font-weight:400;font-size:0.75rem">(${ex.exerciseType})</span>
+                </div>
+                <table style="width:100%;border-collapse:collapse">
+                  ${ex.sets.map((set, i) => `
+                    <tr>
+                      <td style="font-size:0.75rem;color:#64748b;padding:2px 10px 2px 0;white-space:nowrap">Set ${i+1}</td>
+                      <td style="font-size:0.75rem;color:#94a3b8">${formatSetForPDF(set, ex.exerciseType)}</td>
+                    </tr>`).join('')}
+                </table>
+              </div>`).join('')}
+          </div>`;
         return `
           <div style="background:#1e293b;border-radius:14px;padding:16px 20px;margin-bottom:12px;display:flex;align-items:flex-start;gap:16px">
             <div style="font-size:1.75rem;flex-shrink:0;margin-top:2px">${s.sessionTypeEmoji}</div>
@@ -1054,7 +1547,7 @@ function exportPDF() {
               <div style="font-size:0.8125rem;color:#94a3b8;margin-top:3px">
                 ${dateLabel} · ${s.startTime} · ${formatDuration(s.durationSeconds)}
               </div>
-              ${notesHtml}
+              ${notesHtml}${exercisesHtml}
             </div>
           </div>`;
       }).join('');
@@ -1220,6 +1713,9 @@ function wireEvents() {
     closeExportModal();
     closeClearConfirmModal();
     closeResetConfirmModal();
+    closeAddExerciseModal();
+    closePickExerciseModal();
+    closeLogSetModal();
   });
 
   document.getElementById('btn-open-export').addEventListener('click', openExportModal);
@@ -1295,6 +1791,51 @@ function wireEvents() {
   });
   document.getElementById('btn-reset-confirm').addEventListener('click', handleResetData);
   document.getElementById('btn-reset-cancel').addEventListener('click', closeResetConfirmModal);
+
+  // Exercises tab segment control
+  document.getElementById('exercises-segment').addEventListener('click', e => {
+    const btn = e.target.closest('.segment-btn');
+    if (!btn) return;
+    state.exercisesSegment = btn.dataset.segment;
+    renderExercises();
+  });
+
+  // Exercise library filter pills
+  document.getElementById('exercise-filter-pills').addEventListener('click', e => {
+    const pill = e.target.closest('.filter-pill');
+    if (!pill) return;
+    state.exerciseFilterType = pill.dataset.filter;
+    renderExercisesList();
+  });
+
+  // Add exercise to library
+  document.getElementById('btn-open-add-exercise').addEventListener('click', openAddExerciseModal);
+  document.getElementById('btn-save-exercise').addEventListener('click', handleSaveExercise);
+  document.getElementById('btn-cancel-exercise').addEventListener('click', closeAddExerciseModal);
+
+  // Exercise type radio — toggle weight/distance visibility
+  document.querySelectorAll('input[name="new-exercise-type"]').forEach(radio => {
+    radio.addEventListener('change', () => {
+      const isStrength = radio.value === 'strength';
+      document.getElementById('new-exercise-weight-group').style.display   = isStrength ? '' : 'none';
+      document.getElementById('new-exercise-distance-group').style.display = isStrength ? 'none' : '';
+    });
+  });
+
+  // Add exercise to active session
+  document.getElementById('btn-add-exercise-to-session').addEventListener('click', openPickExerciseModal);
+
+  // Pick exercise modal filter pills
+  document.getElementById('pick-exercise-filter-pills').addEventListener('click', e => {
+    const pill = e.target.closest('.filter-pill');
+    if (!pill) return;
+    state.pickExerciseFilter = pill.dataset.filter;
+    renderPickExerciseList();
+  });
+
+  // Set logger modal
+  document.getElementById('btn-log-set').addEventListener('click', handleLogSet);
+  document.getElementById('btn-cancel-set').addEventListener('click', closeLogSetModal);
 }
 
 // ─── Init ─────────────────────────────────────────────────────
@@ -1304,6 +1845,13 @@ function completeInit() {
     Storage.saveTypes(DEFAULT_TYPES);
   } else {
     Storage.saveTypes(migrateTypes(existing));
+  }
+
+  const rawEx = Storage.getExercises();
+  if (rawEx === null) {
+    Storage.saveExercises([...DEFAULT_EXERCISES]);
+  } else {
+    Storage.saveExercises(migrateExercises(rawEx));
   }
 
   renderColorPresets();
