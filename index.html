@@ -350,7 +350,7 @@
     <div class="about-hero">
       <div class="about-hero-icon">🏋️</div>
       <h2 class="about-app-name">Gym<span>Log</span></h2>
-      <p class="about-version">version 1.3</p>
+      <p class="about-version">version 1.3.1</p>
     </div>
     <div class="settings-section">
       <div class="settings-section-label">Creator</div>
@@ -371,7 +371,20 @@
       <div class="settings-card release-notes">
         <div class="release-version">
           <div class="release-version-header">
-            <span class="release-badge">v1.3</span>
+            <span class="release-badge">v1.3.1</span>
+            <span class="release-version-title">Bug Fixes &amp; Test Automation</span>
+          </div>
+          <ul class="release-list">
+            <li>Fixed filter pill text misalignment in Exercises view caused by native browser button rendering</li>
+            <li>Fixed filter pill border clipping in Exercises view caused by overflow container collapsing top padding</li>
+            <li>Fixed horizontal scrollbar appearing on filter pills in the Add Exercise modal</li>
+            <li>Disabled Export and Clear History buttons on Reports when no sessions exist</li>
+            <li>Added Playwright E2E test suite with GitHub Actions CI on pull requests</li>
+          </ul>
+        </div>
+        <div class="release-version">
+          <div class="release-version-header">
+            <span class="release-badge release-badge--muted">v1.3</span>
             <span class="release-version-title">Exercise Library &amp; Inline Logging</span>
           </div>
           <ul class="release-list">
