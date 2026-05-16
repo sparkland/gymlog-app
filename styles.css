@@ -1645,12 +1645,16 @@ body {
 }
 .filter-pill {
   flex-shrink: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
   background: var(--bg-card);
   border: 1.5px solid var(--border);
   border-radius: 20px;
   color: var(--text-secondary);
   font-size: 0.8125rem;
   font-weight: 600;
+  line-height: 1;
   padding: 6px 16px;
   cursor: pointer;
   transition: border-color var(--transition), color var(--transition), background var(--transition);
