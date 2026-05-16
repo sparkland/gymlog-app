@@ -71,6 +71,49 @@ test.describe('Session flow', () => {
     await expect(page.locator('#session-exercises-list')).toContainText('Pull-Up');
   });
 
+  test('Add Exercise modal filter pills show without clipping or scrollbars', async ({ page }) => {
+    await startSession(page);
+    await page.locator('#btn-add-exercise-to-session').click();
+    await waitForModalOpen(page, 'modal-pick-exercise');
+
+    const container = page.locator('#pick-exercise-filter-pills');
+    const pills = container.locator('.filter-pill');
+
+    // All three pills must be present and visible
+    await expect(pills).toHaveCount(3);
+    for (let i = 0; i < 3; i++) {
+      await expect(pills.nth(i)).toBeVisible();
+    }
+
+    // Helper: assert no horizontal scrollbar and no vertical top-clipping
+    async function assertNoBadOverflow() {
+      const hasHScroll = await page.evaluate(() => {
+        const el = document.getElementById('pick-exercise-filter-pills');
+        return el.scrollWidth > el.clientWidth;
+      });
+      expect(hasHScroll, 'horizontal scrollbar should not be present').toBe(false);
+
+      const topClipped = await page.evaluate(() => {
+        const el  = document.getElementById('pick-exercise-filter-pills');
+        const box = el.getBoundingClientRect();
+        return Array.from(el.querySelectorAll('.filter-pill')).some(pill => {
+          // Allow 2px for sub-pixel rounding
+          return pill.getBoundingClientRect().top < box.top - 2;
+        });
+      });
+      expect(topClipped, 'no pill should be clipped at the top of the container').toBe(false);
+    }
+
+    // Check initial (All) state
+    await assertNoBadOverflow();
+
+    // Cycle through each filter and re-check
+    for (const filter of ['strength', 'cardio', 'all']) {
+      await page.locator(`#pick-exercise-filter-pills [data-filter="${filter}"]`).click();
+      await assertNoBadOverflow();
+    }
+  });
+
   test('logging a strength set saves and displays the set row', async ({ page }) => {
     await startSession(page);
     await addExerciseToSession(page, 'Pull-Up');
