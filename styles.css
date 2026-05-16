@@ -1649,6 +1649,8 @@ body {
 }
 .filter-pills--modal {
   padding: 8px 0 12px;
+  overflow: visible;
+  flex-wrap: wrap;
 }
 .filter-pill {
   -webkit-appearance: none;
