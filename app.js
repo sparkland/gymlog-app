@@ -657,6 +657,11 @@ function renderReports() {
   const name = Storage.getUserName();
   const subtitle = document.querySelector('#view-reports .view-header p');
   if (subtitle) subtitle.textContent = name ? `${name}'s training history` : 'Your training history';
+
+  const hasHistory = allSessions.length > 0;
+  document.getElementById('btn-open-export').disabled   = !hasHistory;
+  document.getElementById('btn-clear-history').disabled = !hasHistory;
+
   renderStats(allSessions);
   renderFilterSelect(allSessions);
   renderSessionsList(allSessions);

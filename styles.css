@@ -565,6 +565,13 @@ body {
   border-color: var(--accent);
 }
 
+.btn-export:disabled,
+.btn-clear-history:disabled {
+  opacity: 0.35;
+  cursor: not-allowed;
+  pointer-events: none;
+}
+
 /* ─── Export Modal ───────────────────────────────────────────── */
 .modal-subtitle {
   font-size: 0.875rem;
