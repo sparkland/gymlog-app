@@ -1644,6 +1644,8 @@ body {
   padding: 8px 0 12px;
 }
 .filter-pill {
+  -webkit-appearance: none;
+  appearance: none;
   flex-shrink: 0;
   display: inline-flex;
   align-items: center;
@@ -1656,6 +1658,7 @@ body {
   font-weight: 600;
   line-height: 1;
   padding: 6px 16px;
+  min-height: 32px;
   cursor: pointer;
   transition: border-color var(--transition), color var(--transition), background var(--transition);
   -webkit-tap-highlight-color: transparent;
