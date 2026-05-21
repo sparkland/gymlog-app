@@ -2070,6 +2070,38 @@ body {
   padding: 4px 0;
 }
 
+/* ─── Exercise History Hint (Last Session / PR) ─────────────── */
+.exercise-history-hint {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 6px 0 8px;
+  padding: 8px 12px;
+  background: var(--bg-primary);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  font-size: 0.8125rem;
+}
+.exercise-history-hint-label {
+  color: var(--text-muted);
+  flex-shrink: 0;
+}
+.exercise-history-hint-value {
+  color: var(--accent);
+  font-weight: 600;
+  margin-left: auto;
+  text-align: right;
+}
+
+/* Sub-description text inside Settings radio rows */
+.radio-row-sub {
+  display: block;
+  font-size: 0.75rem;
+  font-weight: 400;
+  color: var(--text-muted);
+  margin-top: 2px;
+}
+
 /* ─── Machine / Base Weight field ────────────────────────────── */
 .base-weight-row {
   margin-top: 2px;

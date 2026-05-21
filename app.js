@@ -2,15 +2,18 @@
 
 // ─── Constants ────────────────────────────────────────────────
 const STORAGE_KEYS = {
-  TYPES:    'gym_session_types',
-  SESSIONS: 'gym_sessions',
-  ACTIVE:   'gym_active_session',
-  USER_NAME:'gym_user_name',
-  UNITS:    'gym_units',
-  EXERCISES: 'gym_exercises',
+  TYPES:         'gym_session_types',
+  SESSIONS:      'gym_sessions',
+  ACTIVE:        'gym_active_session',
+  USER_NAME:     'gym_user_name',
+  UNITS:         'gym_units',
+  EXERCISES:     'gym_exercises',
+  SESSION_PREFS: 'gym_session_prefs',
 };
 
-const DEFAULT_UNITS = { weight: 'kg', distance: 'km' };
+const DEFAULT_UNITS         = { weight: 'kg', distance: 'km' };
+const DEFAULT_SESSION_PREFS = { exerciseHistory: 'last' };
+// exerciseHistory: 'last' | 'pr' | 'none'
 
 const COLOR_PRESETS = [
   '#6366f1','#ef4444','#f97316','#eab308',
@@ -143,6 +146,13 @@ const Storage = {
     return raw ? JSON.parse(raw) : { ...DEFAULT_UNITS };
   },
   saveUnits(u) { localStorage.setItem(STORAGE_KEYS.UNITS, JSON.stringify(u)); },
+  getSessionPrefs() {
+    const raw = localStorage.getItem(STORAGE_KEYS.SESSION_PREFS);
+    return raw ? JSON.parse(raw) : { ...DEFAULT_SESSION_PREFS };
+  },
+  saveSessionPrefs(prefs) {
+    localStorage.setItem(STORAGE_KEYS.SESSION_PREFS, JSON.stringify(prefs));
+  },
 
   deleteSession(id) {
     Storage.saveSessions(Storage.getSessions().filter(s => s.id !== id));
@@ -395,7 +405,7 @@ function migrateExercises(existing) {
 
 // ─── Router ───────────────────────────────────────────────────
 // Sub-views that live under the Settings tab
-const SETTINGS_SUB_VIEWS = new Set(['units', 'data', 'about']);
+const SETTINGS_SUB_VIEWS = new Set(['units', 'data', 'about', 'sessions-settings']);
 
 function navigate(viewName) {
   document.querySelectorAll('.view').forEach(v => v.classList.remove('view--active'));
@@ -411,6 +421,7 @@ function navigate(viewName) {
   const renderers = {
     home: renderHome, exercises: renderExercises, reports: renderReports,
     settings: renderSettings, units: renderUnits, data: renderData, about: renderAbout,
+    'sessions-settings': renderSessionPrefs,
   };
   if (renderers[viewName]) renderers[viewName]();
 }
@@ -870,6 +881,14 @@ function renderUnits() {
   document.getElementById('unit-distance-miles').checked = units.distance === 'miles';
 }
 
+// ─── Render: Session Preferences ─────────────────────────────
+function renderSessionPrefs() {
+  const prefs = Storage.getSessionPrefs();
+  document.getElementById('eh-last').checked = prefs.exerciseHistory === 'last';
+  document.getElementById('eh-pr').checked   = prefs.exerciseHistory === 'pr';
+  document.getElementById('eh-none').checked = prefs.exerciseHistory === 'none';
+}
+
 // ─── Render: Data ────────────────────────────────────────────
 function renderData() {
   // Static view — buttons wired in wireEvents
@@ -951,6 +970,74 @@ function handleDeleteExercise(id) {
   renderExercisesList();
 }
 
+// ─── Exercise History Helpers ─────────────────────────────────
+
+/** Returns { set, exerciseType } for the last set of the most recent session
+ *  that contained exerciseId, or null if no history exists. */
+function getLastSetForExercise(exerciseId) {
+  const sessions = Storage.getSessions();
+  const sorted = sessions.slice().sort((a, b) =>
+    b.date.localeCompare(a.date) || b.startTime.localeCompare(a.startTime)
+  );
+  for (const session of sorted) {
+    const ex = (session.exercises || []).find(e => e.exerciseId === exerciseId);
+    if (ex && ex.sets && ex.sets.length > 0) {
+      return { set: ex.sets[ex.sets.length - 1], exerciseType: ex.exerciseType };
+    }
+  }
+  return null;
+}
+
+/** Returns { set, exerciseType } for the best single set (PR) for exerciseId
+ *  across all saved sessions, or null. For strength: highest weight.
+ *  For cardio: highest distance, or longest duration as fallback. */
+function getPRForExercise(exerciseId) {
+  const sessions = Storage.getSessions();
+  let best = null;
+  let bestValue = -Infinity;
+  for (const session of sessions) {
+    const ex = (session.exercises || []).find(e => e.exerciseId === exerciseId);
+    if (!ex || !ex.sets || ex.sets.length === 0) continue;
+    for (const set of ex.sets) {
+      let value;
+      if (ex.exerciseType === 'strength') {
+        value = set.weight ?? -1;
+      } else {
+        if (set.distance != null) {
+          value = set.distance;
+        } else if (set.duration) {
+          const [m, s] = set.duration.split(':').map(Number);
+          value = m * 60 + (s || 0);
+        } else {
+          value = -1;
+        }
+      }
+      if (value > bestValue) {
+        bestValue = value;
+        best = { set, exerciseType: ex.exerciseType };
+      }
+    }
+  }
+  return best;
+}
+
+/** Returns an HTML string for the exercise history hint row, or '' if not shown. */
+function buildExerciseHistoryHint(exerciseId) {
+  const prefs = Storage.getSessionPrefs();
+  if (prefs.exerciseHistory === 'none') return '';
+  const result = prefs.exerciseHistory === 'pr'
+    ? getPRForExercise(exerciseId)
+    : getLastSetForExercise(exerciseId);
+  if (!result) return '';
+  const label = prefs.exerciseHistory === 'pr' ? '🏆 Personal Record' : '🕐 Last session';
+  const value = formatSetValues(result.set, result.exerciseType);
+  return `
+    <div class="exercise-history-hint">
+      <span class="exercise-history-hint-label">${label}</span>
+      <span class="exercise-history-hint-value">${value}</span>
+    </div>`;
+}
+
 // ─── Render: Active Session Exercises ─────────────────────────
 function formatSetValues(set, exerciseType) {
   if (exerciseType === 'strength') {
@@ -1004,6 +1091,7 @@ function renderActiveSessionExercises() {
         <button class="btn-remove-exercise" data-exercise-id="${ex.exerciseId}" data-set-count="${ex.sets.length}" title="Remove exercise">✕</button>
       </div>
       <div class="active-exercise-sets">${setRows}</div>
+      ${buildExerciseHistoryHint(ex.exerciseId)}
       <button class="btn-add-set" data-exercise-id="${ex.exerciseId}">+ Add Set</button>
     `;
 
@@ -1955,6 +2043,17 @@ function wireEvents() {
   document.getElementById('btn-back-units').addEventListener('click', () => navigate('settings'));
   document.getElementById('btn-back-data').addEventListener('click',  () => navigate('settings'));
   document.getElementById('btn-back-about').addEventListener('click', () => navigate('settings'));
+  document.getElementById('btn-back-sessions-settings').addEventListener('click', () => navigate('settings'));
+
+  document.querySelectorAll('input[name="exercise-history"]').forEach(radio => {
+    radio.addEventListener('change', () => {
+      const prefs = Storage.getSessionPrefs();
+      prefs.exerciseHistory = radio.value;
+      Storage.saveSessionPrefs(prefs);
+      // Live-update hints if a session is currently running
+      if (Storage.getActive()) renderActiveSessionExercises();
+    });
+  });
 
   // Units radio buttons
   document.querySelectorAll('input[name="weight-unit"]').forEach(radio => {

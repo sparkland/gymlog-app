@@ -10,7 +10,7 @@
   <meta http-equiv="Pragma" content="no-cache">
   <meta http-equiv="Expires" content="0">
   <title>GymLog</title>
-  <link rel="stylesheet" href="styles.css?v=14">
+  <link rel="stylesheet" href="styles.css?v=15">
 </head>
 <body>
 
@@ -228,6 +228,14 @@
       <p>Preferences &amp; app info</p>
     </div>
     <div class="settings-list">
+      <button class="settings-row" data-nav="sessions-settings">
+        <span class="settings-row-icon">🏃</span>
+        <div class="settings-row-info">
+          <h3>Sessions</h3>
+          <p>Exercise history display during sessions</p>
+        </div>
+        <span class="settings-row-chevron">›</span>
+      </button>
       <button class="settings-row" data-nav="units">
         <span class="settings-row-icon">⚖️</span>
         <div class="settings-row-info">
@@ -288,6 +296,44 @@
         <label class="radio-row">
           <span class="radio-row-label">Miles</span>
           <input type="radio" name="distance-unit" value="miles" id="unit-distance-miles">
+          <span class="radio-custom"></span>
+        </label>
+      </div>
+    </div>
+  </div>
+
+  <!-- ═══════════════ SESSIONS SETTINGS VIEW ═══════════════ -->
+  <div id="view-sessions-settings" class="view">
+    <div class="view-header">
+      <button class="btn-back" id="btn-back-sessions-settings">← Settings</button>
+      <h1>Sessions</h1>
+      <p>Customise what you see during a session</p>
+    </div>
+    <div class="settings-section">
+      <div class="settings-section-label">Exercise History</div>
+      <div class="settings-card">
+        <label class="radio-row">
+          <span class="radio-row-label">
+            Show last session's result
+            <span class="radio-row-sub">Displays the final set from the most recent session containing this exercise</span>
+          </span>
+          <input type="radio" name="exercise-history" value="last" id="eh-last">
+          <span class="radio-custom"></span>
+        </label>
+        <label class="radio-row">
+          <span class="radio-row-label">
+            Show Personal Record (PR)
+            <span class="radio-row-sub">Displays the best single set ever recorded for this exercise</span>
+          </span>
+          <input type="radio" name="exercise-history" value="pr" id="eh-pr">
+          <span class="radio-custom"></span>
+        </label>
+        <label class="radio-row">
+          <span class="radio-row-label">
+            Don't show previous results
+            <span class="radio-row-sub">No history is displayed on the exercise card</span>
+          </span>
+          <input type="radio" name="exercise-history" value="none" id="eh-none">
           <span class="radio-custom"></span>
         </label>
       </div>
@@ -699,7 +745,7 @@
   <!-- Toast notification -->
   <div id="toast" class="toast" role="alert" aria-live="assertive"></div>
 
-  <script src="app.js?v=14"></script>
+  <script src="app.js?v=15"></script>
   <script>
     // Register service worker for network-first caching (requires HTTPS or localhost).
     // The SW never touches localStorage — all user data (sessions, name, units) is safe.
