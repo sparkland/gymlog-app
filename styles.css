@@ -1947,6 +1947,27 @@ body {
   overflow: hidden;
 }
 
+/* ─── Remove Exercise Button ─────────────────────────────────── */
+.btn-remove-exercise {
+  -webkit-appearance: none;
+  appearance: none;
+  background: none;
+  border: none;
+  color: var(--text-muted);
+  font-size: 0.75rem;
+  line-height: 1;
+  padding: 4px;
+  margin-left: auto;
+  cursor: pointer;
+  border-radius: var(--radius-sm);
+  transition: color var(--transition), background var(--transition);
+  -webkit-tap-highlight-color: transparent;
+}
+.btn-remove-exercise:hover {
+  color: var(--danger);
+  background: var(--danger-soft);
+}
+
 /* ─── Set Logger Modal ───────────────────────────────────────── */
 .modal-set-header {
   display: flex;

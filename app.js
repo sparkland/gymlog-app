@@ -197,6 +197,12 @@ const Storage = {
     ex.sets.splice(setIndex, 1);
     Storage.saveActive(active);
   },
+  deleteExerciseFromActive(exerciseId) {
+    const active = Storage.getActive();
+    if (!active) return;
+    active.exercises = (active.exercises || []).filter(e => e.exerciseId !== exerciseId);
+    Storage.saveActive(active);
+  },
 };
 
 // ─── App State ────────────────────────────────────────────────
@@ -972,6 +978,7 @@ function renderActiveSessionExercises() {
       <div class="active-exercise-card-header">
         <span class="active-exercise-card-name">${ex.exerciseName}</span>
         <span class="exercise-type-badge exercise-type-badge--${ex.exerciseType}">${ex.exerciseType === 'strength' ? 'Strength' : 'Cardio'}</span>
+        <button class="btn-remove-exercise" data-exercise-id="${ex.exerciseId}" data-set-count="${ex.sets.length}" title="Remove exercise">✕</button>
       </div>
       <div class="active-exercise-sets">${setRows}</div>
       <button class="btn-add-set" data-exercise-id="${ex.exerciseId}">+ Add Set</button>
@@ -989,6 +996,12 @@ function renderActiveSessionExercises() {
       Storage.deleteSetFromActiveExercise(btn.dataset.exerciseId, parseInt(btn.dataset.index, 10));
       renderActiveSessionExercises();
     });
+  });
+
+  listEl.querySelectorAll('.btn-remove-exercise').forEach(btn => {
+    btn.addEventListener('click', () =>
+      handleRemoveExercise(btn.dataset.exerciseId, parseInt(btn.dataset.setCount, 10))
+    );
   });
 }
 
@@ -1034,8 +1047,15 @@ function closePickExerciseModal() {
 }
 
 function renderPickExerciseList() {
-  const listEl    = document.getElementById('pick-exercise-list');
+  const listEl = document.getElementById('pick-exercise-list');
+
+  // Build set of exercise IDs already added to the active session
+  const activeExerciseIds = new Set(
+    ((Storage.getActive() || {}).exercises || []).map(e => e.exerciseId)
+  );
+
   const exercises = (Storage.getExercises() || []).filter(ex => {
+    if (activeExerciseIds.has(ex.id)) return false;   // already in session
     if (state.pickExerciseFilter === 'all') return true;
     return ex.type === state.pickExerciseFilter;
   });
@@ -1046,6 +1066,10 @@ function renderPickExerciseList() {
   });
 
   listEl.innerHTML = '';
+  if (exercises.length === 0) {
+    listEl.innerHTML = `<p class="exercise-empty-hint">All exercises have been added to this session.</p>`;
+    return;
+  }
   exercises.forEach(ex => {
     const row = document.createElement('div');
     row.className = 'pick-exercise-row';
@@ -1056,6 +1080,17 @@ function renderPickExerciseList() {
     row.addEventListener('click', () => handlePickExercise(ex));
     listEl.appendChild(row);
   });
+}
+
+function handleRemoveExercise(exerciseId, setCount) {
+  if (setCount > 0) {
+    const confirmed = window.confirm(
+      `This exercise has ${setCount} set${setCount > 1 ? 's' : ''} logged. Remove it and all its sets?`
+    );
+    if (!confirmed) return;
+  }
+  Storage.deleteExerciseFromActive(exerciseId);
+  renderActiveSessionExercises();
 }
 
 function handlePickExercise(exercise) {
