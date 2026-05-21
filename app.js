@@ -211,6 +211,14 @@ const Storage = {
     ex.weightMode = mode;   // 'weight' | 'plates'
     Storage.saveActive(active);
   },
+  setExerciseBaseWeight(exerciseId, weight) {
+    const active = Storage.getActive();
+    if (!active) return;
+    const ex = (active.exercises || []).find(e => e.exerciseId === exerciseId);
+    if (!ex) return;
+    ex.baseWeight = weight;   // number | null
+    Storage.saveActive(active);
+  },
 };
 
 // ─── App State ────────────────────────────────────────────────
@@ -952,6 +960,9 @@ function formatSetValues(set, exerciseType) {
         ? ` · ${set.weight} plate${set.weight !== 1 ? 's' : ''}`
         : ` · ${set.weight}${set.weightUnit}`;
     }
+    if (set.baseWeight != null) {
+      str += ` + ${set.baseWeight}${set.baseWeightUnit} machine`;
+    }
     return str;
   } else {
     let str = set.duration || '';
@@ -1112,6 +1123,7 @@ function handlePickExercise(exercise) {
     exerciseType: exercise.type,
     sets:         [],
     weightMode:   'weight',
+    baseWeight:   null,
   });
   closePickExerciseModal();
   renderActiveSessionExercises();
@@ -1165,13 +1177,20 @@ function openLogSetModal(exerciseId) {
     const weightGroup = document.getElementById('set-weight-group');
     if (ex.trackWeight) {
       weightGroup.style.display = '';
-      // Restore persisted weight mode for this exercise
+      // Restore persisted weight mode and base weight for this exercise
       const activeEx   = ((Storage.getActive() || {}).exercises || []).find(e => e.exerciseId === exerciseId);
       const weightMode = activeEx?.weightMode || 'weight';
       document.getElementById('set-weight-mode-toggle').checked = (weightMode === 'weight');
       applyWeightMode(weightMode, units.weight);
+      // Restore base/machine weight
+      const baseWeightGroup = document.getElementById('set-base-weight-group');
+      baseWeightGroup.style.display = '';
+      document.getElementById('set-base-weight-label').textContent = `Machine weight (${units.weight})`;
+      const savedBase = activeEx?.baseWeight ?? null;
+      document.getElementById('set-base-weight').value = savedBase !== null ? savedBase : '';
     } else {
       weightGroup.style.display = 'none';
+      document.getElementById('set-base-weight-group').style.display = 'none';
     }
   } else {
     strengthFields.style.display = 'none';
@@ -1223,15 +1242,23 @@ function handleLogSet() {
       document.getElementById('set-reps').focus();
       return;
     }
-    const weightVal  = document.getElementById('set-weight').value;
-    const activeEx   = ((Storage.getActive() || {}).exercises || []).find(e => e.exerciseId === exerciseId);
-    const weightMode = activeEx?.weightMode || 'weight';
+    const weightVal    = document.getElementById('set-weight').value;
+    const baseWeightVal= document.getElementById('set-base-weight').value;
+    const activeEx     = ((Storage.getActive() || {}).exercises || []).find(e => e.exerciseId === exerciseId);
+    const weightMode   = activeEx?.weightMode || 'weight';
+    const baseWeightNum= ex.trackWeight && baseWeightVal !== '' ? parseFloat(baseWeightVal) : null;
+    // Persist the base weight so it pre-fills for subsequent sets
+    if (ex.trackWeight) {
+      Storage.setExerciseBaseWeight(exerciseId, baseWeightNum);
+    }
     set = {
       reps,
-      weight:     ex.trackWeight && weightVal !== '' ? parseFloat(weightVal) : null,
-      weightUnit: ex.trackWeight && weightVal !== ''
+      weight:          ex.trackWeight && weightVal !== '' ? parseFloat(weightVal) : null,
+      weightUnit:      ex.trackWeight && weightVal !== ''
         ? (weightMode === 'plates' ? 'plates' : units.weight)
         : null,
+      baseWeight:      baseWeightNum,
+      baseWeightUnit:  ex.trackWeight && baseWeightNum !== null ? units.weight : null,
     };
   } else {
     const duration = document.getElementById('set-duration').value.trim();
@@ -1639,6 +1666,9 @@ function formatSetForPDF(set, type) {
       str += set.weightUnit === 'plates'
         ? ` @ ${set.weight} plate${set.weight !== 1 ? 's' : ''}`
         : ` @ ${set.weight}${set.weightUnit}`;
+    }
+    if (set.baseWeight != null) {
+      str += ` + ${set.baseWeight}${set.baseWeightUnit} machine`;
     }
     return str;
   }
