@@ -10,7 +10,7 @@
   <meta http-equiv="Pragma" content="no-cache">
   <meta http-equiv="Expires" content="0">
   <title>GymLog</title>
-  <link rel="stylesheet" href="styles.css?v=17">
+  <link rel="stylesheet" href="styles.css?v=18">
 </head>
 <body>
 
@@ -396,7 +396,7 @@
     <div class="about-hero">
       <div class="about-hero-icon">🏋️</div>
       <h2 class="about-app-name">Gym<span>Log</span></h2>
-      <p class="about-version">version 1.4.5</p>
+      <p class="about-version">version 1.5</p>
     </div>
     <div class="settings-section">
       <div class="settings-section-label">Creator</div>
@@ -417,7 +417,22 @@
       <div class="settings-card release-notes">
         <div class="release-version">
           <div class="release-version-header">
-            <span class="release-badge">v1.4.5</span>
+            <span class="release-badge">v1.5</span>
+            <span class="release-version-title">Report Editing &amp; Rory Bug Fix</span>
+          </div>
+          <ul class="release-list">
+            <li>Added ability to edit any completed session from Reports history — update date, start time, duration, session type and subtype after the fact</li>
+            <li>Edit individual exercises within a completed session: swap an exercise, remove an exercise (with confirmation when sets are logged), or add new exercises</li>
+            <li>Edit, delete or add sets for each exercise within a completed session — set values pre-populate the Log Set modal for easy correction</li>
+            <li>Edited sessions display an ✏️ Edited badge on their session card so it's clear the record was amended</li>
+            <li>Added exercise history hint (Last Session / Personal Record) on exercise cards during active sessions — configurable in Settings → Sessions</li>
+            <li>Fixed bug where the Add Exercise picker was obscured behind the Edit Session modal and could not be interacted with</li>
+            <li>Fixed bug where closing Edit Session left the Add Exercise picker overlaid on the Reports screen</li>
+          </ul>
+        </div>
+        <div class="release-version">
+          <div class="release-version-header">
+            <span class="release-badge release-badge--muted">v1.4.5</span>
             <span class="release-version-title">Weight Recording &amp; Rory Enhancements</span>
           </div>
           <ul class="release-list">
@@ -799,7 +814,7 @@
   <!-- Toast notification -->
   <div id="toast" class="toast" role="alert" aria-live="assertive"></div>
 
-  <script src="app.js?v=17"></script>
+  <script src="app.js?v=18"></script>
   <script>
     // Register service worker for network-first caching (requires HTTPS or localhost).
     // The SW never touches localStorage — all user data (sessions, name, units) is safe.
