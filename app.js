@@ -1738,7 +1738,11 @@ function closeEditSessionModal() {
   state.editingExerciseId = null;
   state.editingSetIndex   = null;
   state.editingMode       = 'active';
+  // Close any sub-modals that may have been opened from within edit mode
+  state.logSetExerciseId  = null;
   document.getElementById('modal-edit-session').classList.remove('open');
+  document.getElementById('modal-pick-exercise').classList.remove('open');
+  document.getElementById('modal-log-set').classList.remove('open');
   document.getElementById('modal-backdrop').classList.remove('open');
 }
 

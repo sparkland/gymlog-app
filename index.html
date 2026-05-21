@@ -10,7 +10,7 @@
   <meta http-equiv="Pragma" content="no-cache">
   <meta http-equiv="Expires" content="0">
   <title>GymLog</title>
-  <link rel="stylesheet" href="styles.css?v=16">
+  <link rel="stylesheet" href="styles.css?v=17">
 </head>
 <body>
 
@@ -649,18 +649,6 @@
     </div>
   </div>
 
-  <!-- ═══════════════ PICK EXERCISE MODAL ═══════════════ -->
-  <div class="modal modal--tall" id="modal-pick-exercise">
-    <div class="modal-handle"></div>
-    <h2>Add Exercise</h2>
-    <div class="filter-pills filter-pills--modal" id="pick-exercise-filter-pills">
-      <button class="filter-pill filter-pill--active" data-filter="all">All</button>
-      <button class="filter-pill" data-filter="strength">Strength</button>
-      <button class="filter-pill" data-filter="cardio">Cardio</button>
-    </div>
-    <div class="modal-exercise-scroll" id="pick-exercise-list"></div>
-  </div>
-
   <!-- ═══════════════ EDIT SESSION MODAL ═══════════════ -->
   <div class="modal modal--tall" id="modal-edit-session">
     <div class="modal-handle"></div>
@@ -713,6 +701,18 @@
       <button class="btn-primary"   id="btn-save-edit-session">Save Changes</button>
       <button class="btn-secondary" id="btn-cancel-edit-session">Cancel</button>
     </div>
+  </div>
+
+  <!-- ═══════════════ PICK EXERCISE MODAL ═══════════════ -->
+  <div class="modal modal--tall" id="modal-pick-exercise">
+    <div class="modal-handle"></div>
+    <h2>Add Exercise</h2>
+    <div class="filter-pills filter-pills--modal" id="pick-exercise-filter-pills">
+      <button class="filter-pill filter-pill--active" data-filter="all">All</button>
+      <button class="filter-pill" data-filter="strength">Strength</button>
+      <button class="filter-pill" data-filter="cardio">Cardio</button>
+    </div>
+    <div class="modal-exercise-scroll" id="pick-exercise-list"></div>
   </div>
 
   <!-- ═══════════════ LOG SET MODAL ═══════════════ -->
@@ -799,7 +799,7 @@
   <!-- Toast notification -->
   <div id="toast" class="toast" role="alert" aria-live="assertive"></div>
 
-  <script src="app.js?v=16"></script>
+  <script src="app.js?v=17"></script>
   <script>
     // Register service worker for network-first caching (requires HTTPS or localhost).
     // The SW never touches localStorage — all user data (sessions, name, units) is safe.
