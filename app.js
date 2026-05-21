@@ -1090,8 +1090,8 @@ function renderActiveSessionExercises() {
         <span class="exercise-type-badge exercise-type-badge--${ex.exerciseType}">${ex.exerciseType === 'strength' ? 'Strength' : 'Cardio'}</span>
         <button class="btn-remove-exercise" data-exercise-id="${ex.exerciseId}" data-set-count="${ex.sets.length}" title="Remove exercise">✕</button>
       </div>
-      <div class="active-exercise-sets">${setRows}</div>
       ${buildExerciseHistoryHint(ex.exerciseId)}
+      <div class="active-exercise-sets">${setRows}</div>
       <button class="btn-add-set" data-exercise-id="${ex.exerciseId}">+ Add Set</button>
     `;
 
