@@ -10,7 +10,7 @@
   <meta http-equiv="Pragma" content="no-cache">
   <meta http-equiv="Expires" content="0">
   <title>GymLog</title>
-  <link rel="stylesheet" href="styles.css?v=15">
+  <link rel="stylesheet" href="styles.css?v=16">
 </head>
 <body>
 
@@ -661,6 +661,60 @@
     <div class="modal-exercise-scroll" id="pick-exercise-list"></div>
   </div>
 
+  <!-- ═══════════════ EDIT SESSION MODAL ═══════════════ -->
+  <div class="modal modal--tall" id="modal-edit-session">
+    <div class="modal-handle"></div>
+    <h2>Edit Session</h2>
+    <div class="modal-edit-scroll">
+
+      <!-- ── Section: Session Details ── -->
+      <div class="edit-section">
+        <div class="edit-section-label">Session Details</div>
+        <div class="modal-form">
+          <div class="form-group">
+            <label for="edit-session-date">Date</label>
+            <input type="date" id="edit-session-date">
+          </div>
+          <div class="datetime-row">
+            <div class="form-group" style="flex:1">
+              <label for="edit-session-time">Start Time</label>
+              <input type="time" id="edit-session-time">
+            </div>
+            <div class="form-group" style="flex:1">
+              <label for="edit-session-duration-h">Duration</label>
+              <div class="duration-row">
+                <input type="number" id="edit-session-duration-h" min="0" max="23" placeholder="0" style="width:60px">
+                <span class="duration-sep">h</span>
+                <input type="number" id="edit-session-duration-m" min="0" max="59" placeholder="00" style="width:60px">
+                <span class="duration-sep">m</span>
+              </div>
+            </div>
+          </div>
+          <div class="form-group">
+            <label for="edit-session-type">Session Type</label>
+            <select class="form-select" id="edit-session-type"></select>
+          </div>
+          <div class="form-group" id="edit-subtype-group">
+            <label for="edit-session-subtype">Subtype</label>
+            <select class="form-select" id="edit-session-subtype"></select>
+          </div>
+        </div>
+      </div>
+
+      <!-- ── Section: Exercises ── -->
+      <div class="edit-section">
+        <div class="edit-section-label">Exercises</div>
+        <div id="edit-exercises-list"></div>
+        <button class="btn-secondary edit-add-exercise-btn" id="btn-edit-add-exercise">+ Add Exercise</button>
+      </div>
+
+    </div>
+    <div class="modal-actions" style="margin-top:16px">
+      <button class="btn-primary"   id="btn-save-edit-session">Save Changes</button>
+      <button class="btn-secondary" id="btn-cancel-edit-session">Cancel</button>
+    </div>
+  </div>
+
   <!-- ═══════════════ LOG SET MODAL ═══════════════ -->
   <div class="modal" id="modal-log-set">
     <div class="modal-handle"></div>
@@ -745,7 +799,7 @@
   <!-- Toast notification -->
   <div id="toast" class="toast" role="alert" aria-live="assertive"></div>
 
-  <script src="app.js?v=15"></script>
+  <script src="app.js?v=16"></script>
   <script>
     // Register service worker for network-first caching (requires HTTPS or localhost).
     // The SW never touches localStorage — all user data (sessions, name, units) is safe.
