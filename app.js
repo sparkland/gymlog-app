@@ -197,6 +197,28 @@ const Storage = {
     ex.sets.splice(setIndex, 1);
     Storage.saveActive(active);
   },
+  deleteExerciseFromActive(exerciseId) {
+    const active = Storage.getActive();
+    if (!active) return;
+    active.exercises = (active.exercises || []).filter(e => e.exerciseId !== exerciseId);
+    Storage.saveActive(active);
+  },
+  setExerciseWeightMode(exerciseId, mode) {
+    const active = Storage.getActive();
+    if (!active) return;
+    const ex = (active.exercises || []).find(e => e.exerciseId === exerciseId);
+    if (!ex) return;
+    ex.weightMode = mode;   // 'weight' | 'plates'
+    Storage.saveActive(active);
+  },
+  setExerciseBaseWeight(exerciseId, weight) {
+    const active = Storage.getActive();
+    if (!active) return;
+    const ex = (active.exercises || []).find(e => e.exerciseId === exerciseId);
+    if (!ex) return;
+    ex.baseWeight = weight;   // number | null
+    Storage.saveActive(active);
+  },
 };
 
 // ─── App State ────────────────────────────────────────────────
@@ -933,7 +955,14 @@ function handleDeleteExercise(id) {
 function formatSetValues(set, exerciseType) {
   if (exerciseType === 'strength') {
     let str = `${set.reps} rep${set.reps !== 1 ? 's' : ''}`;
-    if (set.weight != null && set.weight !== '') str += ` · ${set.weight}${set.weightUnit}`;
+    if (set.weight != null && set.weight !== '') {
+      str += set.weightUnit === 'plates'
+        ? ` · ${set.weight} plate${set.weight !== 1 ? 's' : ''}`
+        : ` · ${set.weight}${set.weightUnit}`;
+    }
+    if (set.baseWeight != null) {
+      str += ` + ${set.baseWeight}${set.baseWeightUnit} machine`;
+    }
     return str;
   } else {
     let str = set.duration || '';
@@ -972,6 +1001,7 @@ function renderActiveSessionExercises() {
       <div class="active-exercise-card-header">
         <span class="active-exercise-card-name">${ex.exerciseName}</span>
         <span class="exercise-type-badge exercise-type-badge--${ex.exerciseType}">${ex.exerciseType === 'strength' ? 'Strength' : 'Cardio'}</span>
+        <button class="btn-remove-exercise" data-exercise-id="${ex.exerciseId}" data-set-count="${ex.sets.length}" title="Remove exercise">✕</button>
       </div>
       <div class="active-exercise-sets">${setRows}</div>
       <button class="btn-add-set" data-exercise-id="${ex.exerciseId}">+ Add Set</button>
@@ -989,6 +1019,12 @@ function renderActiveSessionExercises() {
       Storage.deleteSetFromActiveExercise(btn.dataset.exerciseId, parseInt(btn.dataset.index, 10));
       renderActiveSessionExercises();
     });
+  });
+
+  listEl.querySelectorAll('.btn-remove-exercise').forEach(btn => {
+    btn.addEventListener('click', () =>
+      handleRemoveExercise(btn.dataset.exerciseId, parseInt(btn.dataset.setCount, 10))
+    );
   });
 }
 
@@ -1034,8 +1070,15 @@ function closePickExerciseModal() {
 }
 
 function renderPickExerciseList() {
-  const listEl    = document.getElementById('pick-exercise-list');
+  const listEl = document.getElementById('pick-exercise-list');
+
+  // Build set of exercise IDs already added to the active session
+  const activeExerciseIds = new Set(
+    ((Storage.getActive() || {}).exercises || []).map(e => e.exerciseId)
+  );
+
   const exercises = (Storage.getExercises() || []).filter(ex => {
+    if (activeExerciseIds.has(ex.id)) return false;   // already in session
     if (state.pickExerciseFilter === 'all') return true;
     return ex.type === state.pickExerciseFilter;
   });
@@ -1046,6 +1089,10 @@ function renderPickExerciseList() {
   });
 
   listEl.innerHTML = '';
+  if (exercises.length === 0) {
+    listEl.innerHTML = `<p class="exercise-empty-hint">All exercises have been added to this session.</p>`;
+    return;
+  }
   exercises.forEach(ex => {
     const row = document.createElement('div');
     row.className = 'pick-exercise-row';
@@ -1058,15 +1105,55 @@ function renderPickExerciseList() {
   });
 }
 
+function handleRemoveExercise(exerciseId, setCount) {
+  if (setCount > 0) {
+    const confirmed = window.confirm(
+      `This exercise has ${setCount} set${setCount > 1 ? 's' : ''} logged. Remove it and all its sets?`
+    );
+    if (!confirmed) return;
+  }
+  Storage.deleteExerciseFromActive(exerciseId);
+  renderActiveSessionExercises();
+}
+
 function handlePickExercise(exercise) {
   Storage.addExerciseToActive({
     exerciseId:   exercise.id,
     exerciseName: exercise.name,
     exerciseType: exercise.type,
-    sets: [],
+    sets:         [],
+    weightMode:   'weight',
+    baseWeight:   null,
   });
   closePickExerciseModal();
   renderActiveSessionExercises();
+}
+
+function applyWeightMode(mode, weightUnit) {
+  const label = document.getElementById('set-weight-label');
+  const input = document.getElementById('set-weight');
+  const baseGroup = document.getElementById('set-base-weight-group');
+  if (mode === 'plates') {
+    label.textContent      = 'Plates';
+    input.step             = '1';
+    input.placeholder      = 'e.g. 5';
+    if (baseGroup) baseGroup.style.display = 'none';
+  } else {
+    label.textContent      = `Weight (${weightUnit})`;
+    input.step             = '0.5';
+    input.placeholder      = 'e.g. 60';
+    if (baseGroup) baseGroup.style.display = '';
+  }
+  input.value = '';
+}
+
+function handleWeightModeToggle() {
+  const mode  = document.getElementById('set-weight-mode-toggle').checked ? 'weight' : 'plates';
+  const units = Storage.getUnits();
+  applyWeightMode(mode, units.weight);
+  if (state.logSetExerciseId) {
+    Storage.setExerciseWeightMode(state.logSetExerciseId, mode);
+  }
 }
 
 function openLogSetModal(exerciseId) {
@@ -1090,18 +1177,27 @@ function openLogSetModal(exerciseId) {
   if (ex.type === 'strength') {
     strengthFields.style.display = '';
     cardioFields.style.display   = 'none';
-    // Update weight label
     const weightGroup = document.getElementById('set-weight-group');
     if (ex.trackWeight) {
       weightGroup.style.display = '';
-      document.getElementById('set-weight-label').textContent = `Weight (${units.weight})`;
+      // Restore persisted weight mode and base weight for this exercise
+      const activeEx   = ((Storage.getActive() || {}).exercises || []).find(e => e.exerciseId === exerciseId);
+      const weightMode = activeEx?.weightMode || 'weight';
+      document.getElementById('set-weight-mode-toggle').checked = (weightMode === 'weight');
+      applyWeightMode(weightMode, units.weight);
+      // Restore base/machine weight
+      const baseWeightGroup = document.getElementById('set-base-weight-group');
+      baseWeightGroup.style.display = '';
+      document.getElementById('set-base-weight-label').textContent = `Machine weight (${units.weight})`;
+      const savedBase = activeEx?.baseWeight ?? null;
+      document.getElementById('set-base-weight').value = savedBase !== null ? savedBase : '';
     } else {
       weightGroup.style.display = 'none';
+      document.getElementById('set-base-weight-group').style.display = 'none';
     }
   } else {
     strengthFields.style.display = 'none';
     cardioFields.style.display   = '';
-    // Update distance label
     const distanceGroup = document.getElementById('set-distance-group');
     if (ex.trackDistance) {
       distanceGroup.style.display = '';
@@ -1111,11 +1207,15 @@ function openLogSetModal(exerciseId) {
     }
   }
 
-  // Clear inputs
-  ['set-reps','set-weight','set-duration','set-distance','set-calories'].forEach(id => {
+  // Clear non-weight inputs (weight is cleared by applyWeightMode above for strength)
+  ['set-reps','set-duration','set-distance','set-calories'].forEach(id => {
     const el = document.getElementById(id);
     if (el) el.value = '';
   });
+  // For exercises without trackWeight, clear the weight field too
+  if (ex.type !== 'strength' || !ex.trackWeight) {
+    document.getElementById('set-weight').value = '';
+  }
 
   document.getElementById('modal-log-set').classList.add('open');
   document.getElementById('modal-backdrop').classList.add('open');
@@ -1145,11 +1245,23 @@ function handleLogSet() {
       document.getElementById('set-reps').focus();
       return;
     }
-    const weightVal = document.getElementById('set-weight').value;
+    const weightVal    = document.getElementById('set-weight').value;
+    const baseWeightVal= document.getElementById('set-base-weight').value;
+    const activeEx     = ((Storage.getActive() || {}).exercises || []).find(e => e.exerciseId === exerciseId);
+    const weightMode   = activeEx?.weightMode || 'weight';
+    const baseWeightNum= ex.trackWeight && baseWeightVal !== '' ? parseFloat(baseWeightVal) : null;
+    // Persist the base weight so it pre-fills for subsequent sets
+    if (ex.trackWeight) {
+      Storage.setExerciseBaseWeight(exerciseId, baseWeightNum);
+    }
     set = {
       reps,
-      weight:     ex.trackWeight && weightVal !== '' ? parseFloat(weightVal) : null,
-      weightUnit: units.weight,
+      weight:          ex.trackWeight && weightVal !== '' ? parseFloat(weightVal) : null,
+      weightUnit:      ex.trackWeight && weightVal !== ''
+        ? (weightMode === 'plates' ? 'plates' : units.weight)
+        : null,
+      baseWeight:      baseWeightNum,
+      baseWeightUnit:  ex.trackWeight && baseWeightNum !== null ? units.weight : null,
     };
   } else {
     const duration = document.getElementById('set-duration').value.trim();
@@ -1553,7 +1665,14 @@ function exportJSON() {
 function formatSetForPDF(set, type) {
   if (type === 'strength') {
     let str = `${set.reps} rep${set.reps !== 1 ? 's' : ''}`;
-    if (set.weight != null) str += ` @ ${set.weight}${set.weightUnit}`;
+    if (set.weight != null) {
+      str += set.weightUnit === 'plates'
+        ? ` @ ${set.weight} plate${set.weight !== 1 ? 's' : ''}`
+        : ` @ ${set.weight}${set.weightUnit}`;
+    }
+    if (set.baseWeight != null) {
+      str += ` + ${set.baseWeight}${set.baseWeightUnit} machine`;
+    }
     return str;
   }
   let str = set.duration || '';
@@ -1913,6 +2032,7 @@ function wireEvents() {
   // Set logger modal
   document.getElementById('btn-log-set').addEventListener('click', handleLogSet);
   document.getElementById('btn-cancel-set').addEventListener('click', closeLogSetModal);
+  document.getElementById('set-weight-mode-toggle').addEventListener('change', handleWeightModeToggle);
 }
 
 // ─── Init ─────────────────────────────────────────────────────
