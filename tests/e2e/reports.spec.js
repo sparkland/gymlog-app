@@ -59,6 +59,72 @@ test.describe('Reports', () => {
   });
 });
 
+test.describe('Reports — Edit Session modal', () => {
+  test.beforeEach(async ({ page }) => {
+    await skipOnboarding(page);
+    await seedSession(page);
+    await page.goto('/');
+    await page.locator('[data-nav="reports"]').click();
+    await expect(page.locator('#view-reports')).toHaveClass(/view--active/);
+  });
+
+  test('edit button opens modal pre-populated with session data', async ({ page }) => {
+    await page.locator('.session-edit-btn').first().click();
+    await waitForModalOpen(page, 'modal-edit-session');
+
+    // Date and type fields should be populated
+    await expect(page.locator('#edit-session-date')).not.toHaveValue('');
+    await expect(page.locator('#edit-session-type')).toBeVisible();
+  });
+
+  test('Add Exercise picker opens above edit modal and rows are interactable', async ({ page }) => {
+    await page.locator('.session-edit-btn').first().click();
+    await waitForModalOpen(page, 'modal-edit-session');
+
+    await page.locator('#btn-edit-add-exercise').click();
+    await waitForModalOpen(page, 'modal-pick-exercise');
+
+    // Picker rows must be visible and clickable — not obscured by the edit modal behind them
+    const firstRow = page.locator('.pick-exercise-row').first();
+    await expect(firstRow).toBeVisible();
+    await expect(firstRow).toBeEnabled();
+  });
+
+  test('selecting exercise from picker adds it to edit session and closes picker', async ({ page }) => {
+    await page.locator('.session-edit-btn').first().click();
+    await waitForModalOpen(page, 'modal-edit-session');
+
+    await page.locator('#btn-edit-add-exercise').click();
+    await waitForModalOpen(page, 'modal-pick-exercise');
+
+    await page.locator('.pick-exercise-row', { hasText: 'Bench Press' }).click();
+    await waitForModalClosed(page, 'modal-pick-exercise');
+
+    // Edit modal stays open; exercise appears in the list
+    await waitForModalOpen(page, 'modal-edit-session');
+    await expect(page.locator('#edit-exercises-list')).toContainText('Bench Press');
+  });
+
+  test('cancelling edit session also closes an open exercise picker', async ({ page }) => {
+    await page.locator('.session-edit-btn').first().click();
+    await waitForModalOpen(page, 'modal-edit-session');
+
+    // Open the picker without selecting anything
+    await page.locator('#btn-edit-add-exercise').click();
+    await waitForModalOpen(page, 'modal-pick-exercise');
+
+    // Cancel the edit session — both modals must close
+    await page.locator('#btn-cancel-edit-session').click();
+    await waitForModalClosed(page, 'modal-edit-session');
+    await waitForModalClosed(page, 'modal-pick-exercise');
+
+    // Backdrop must also be gone
+    await page.waitForFunction(() =>
+      !document.getElementById('modal-backdrop').classList.contains('open')
+    );
+  });
+});
+
 test.describe('Reports — exercise summary', () => {
   test('session with exercises shows expandable summary', async ({ page }) => {
     await skipOnboarding(page);
