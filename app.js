@@ -1132,14 +1132,17 @@ function handlePickExercise(exercise) {
 function applyWeightMode(mode, weightUnit) {
   const label = document.getElementById('set-weight-label');
   const input = document.getElementById('set-weight');
+  const baseGroup = document.getElementById('set-base-weight-group');
   if (mode === 'plates') {
-    label.textContent = 'Plates';
-    input.step        = '1';
-    input.placeholder = 'e.g. 5';
+    label.textContent      = 'Plates';
+    input.step             = '1';
+    input.placeholder      = 'e.g. 5';
+    if (baseGroup) baseGroup.style.display = 'none';
   } else {
-    label.textContent = `Weight (${weightUnit})`;
-    input.step        = '0.5';
-    input.placeholder = 'e.g. 60';
+    label.textContent      = `Weight (${weightUnit})`;
+    input.step             = '0.5';
+    input.placeholder      = 'e.g. 60';
+    if (baseGroup) baseGroup.style.display = '';
   }
   input.value = '';
 }
