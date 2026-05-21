@@ -2,15 +2,18 @@
 
 // ─── Constants ────────────────────────────────────────────────
 const STORAGE_KEYS = {
-  TYPES:    'gym_session_types',
-  SESSIONS: 'gym_sessions',
-  ACTIVE:   'gym_active_session',
-  USER_NAME:'gym_user_name',
-  UNITS:    'gym_units',
-  EXERCISES: 'gym_exercises',
+  TYPES:         'gym_session_types',
+  SESSIONS:      'gym_sessions',
+  ACTIVE:        'gym_active_session',
+  USER_NAME:     'gym_user_name',
+  UNITS:         'gym_units',
+  EXERCISES:     'gym_exercises',
+  SESSION_PREFS: 'gym_session_prefs',
 };
 
-const DEFAULT_UNITS = { weight: 'kg', distance: 'km' };
+const DEFAULT_UNITS         = { weight: 'kg', distance: 'km' };
+const DEFAULT_SESSION_PREFS = { exerciseHistory: 'last' };
+// exerciseHistory: 'last' | 'pr' | 'none'
 
 const COLOR_PRESETS = [
   '#6366f1','#ef4444','#f97316','#eab308',
@@ -143,9 +146,23 @@ const Storage = {
     return raw ? JSON.parse(raw) : { ...DEFAULT_UNITS };
   },
   saveUnits(u) { localStorage.setItem(STORAGE_KEYS.UNITS, JSON.stringify(u)); },
+  getSessionPrefs() {
+    const raw = localStorage.getItem(STORAGE_KEYS.SESSION_PREFS);
+    return raw ? JSON.parse(raw) : { ...DEFAULT_SESSION_PREFS };
+  },
+  saveSessionPrefs(prefs) {
+    localStorage.setItem(STORAGE_KEYS.SESSION_PREFS, JSON.stringify(prefs));
+  },
 
   deleteSession(id) {
     Storage.saveSessions(Storage.getSessions().filter(s => s.id !== id));
+  },
+  updateSession(id, sessionObj) {
+    const sessions = Storage.getSessions();
+    const idx = sessions.findIndex(s => s.id === id);
+    if (idx === -1) return;
+    sessions[idx] = sessionObj;
+    Storage.saveSessions(sessions);
   },
   updateSessionNotes(id, notes) {
     const sessions = Storage.getSessions();
@@ -234,8 +251,13 @@ const state = {
   notesSessionId:      null,
   exercisesSegment:   'session-types',
   exerciseFilterType: 'all',
-  pickExerciseFilter: 'all',
-  logSetExerciseId:   null,
+  pickExerciseFilter:  'all',
+  logSetExerciseId:    null,
+  editingSessionId:    null,
+  editingSession:      null,
+  editingExerciseId:   null,
+  editingSetIndex:     null,
+  editingMode:         'active',
 };
 
 // ─── Utility ──────────────────────────────────────────────────
@@ -395,7 +417,7 @@ function migrateExercises(existing) {
 
 // ─── Router ───────────────────────────────────────────────────
 // Sub-views that live under the Settings tab
-const SETTINGS_SUB_VIEWS = new Set(['units', 'data', 'about']);
+const SETTINGS_SUB_VIEWS = new Set(['units', 'data', 'about', 'sessions-settings']);
 
 function navigate(viewName) {
   document.querySelectorAll('.view').forEach(v => v.classList.remove('view--active'));
@@ -411,6 +433,7 @@ function navigate(viewName) {
   const renderers = {
     home: renderHome, exercises: renderExercises, reports: renderReports,
     settings: renderSettings, units: renderUnits, data: renderData, about: renderAbout,
+    'sessions-settings': renderSessionPrefs,
   };
   if (renderers[viewName]) renderers[viewName]();
 }
@@ -783,6 +806,7 @@ function renderSessionsList(allSessions) {
       </div>
       <div class="session-history-info">
         <h3>${session.sessionTypeName}</h3>
+        ${session.manuallyEdited ? `<span class="session-edited-badge">✏️ Edited</span>` : ''}
         <p>${secondary}</p>
         ${session.notes ? `<button class="btn-view-notes" data-id="${session.id}">📝 Notes</button>` : ''}
       </div>
@@ -790,6 +814,7 @@ function renderSessionsList(allSessions) {
         <div class="session-duration-value">${formatDuration(session.durationSeconds)}</div>
         <div class="session-duration-label">duration</div>
       </div>
+      <button class="session-edit-btn"   data-id="${session.id}" title="Edit session">✏️</button>
       <button class="session-delete-btn" data-id="${session.id}" title="Delete session">✕</button>
     `;
 
@@ -813,6 +838,10 @@ function renderSessionsList(allSessions) {
 
   list.querySelectorAll('.btn-view-notes').forEach(btn => {
     btn.addEventListener('click', () => showNotesModal(btn.dataset.id));
+  });
+
+  list.querySelectorAll('.session-edit-btn').forEach(btn => {
+    btn.addEventListener('click', () => openEditSessionModal(btn.dataset.id));
   });
 
   list.querySelectorAll('.session-delete-btn').forEach(btn => {
@@ -868,6 +897,14 @@ function renderUnits() {
   document.getElementById('unit-weight-lbs').checked   = units.weight === 'lbs';
   document.getElementById('unit-distance-km').checked  = units.distance === 'km';
   document.getElementById('unit-distance-miles').checked = units.distance === 'miles';
+}
+
+// ─── Render: Session Preferences ─────────────────────────────
+function renderSessionPrefs() {
+  const prefs = Storage.getSessionPrefs();
+  document.getElementById('eh-last').checked = prefs.exerciseHistory === 'last';
+  document.getElementById('eh-pr').checked   = prefs.exerciseHistory === 'pr';
+  document.getElementById('eh-none').checked = prefs.exerciseHistory === 'none';
 }
 
 // ─── Render: Data ────────────────────────────────────────────
@@ -951,6 +988,74 @@ function handleDeleteExercise(id) {
   renderExercisesList();
 }
 
+// ─── Exercise History Helpers ─────────────────────────────────
+
+/** Returns { set, exerciseType } for the last set of the most recent session
+ *  that contained exerciseId, or null if no history exists. */
+function getLastSetForExercise(exerciseId) {
+  const sessions = Storage.getSessions();
+  const sorted = sessions.slice().sort((a, b) =>
+    b.date.localeCompare(a.date) || b.startTime.localeCompare(a.startTime)
+  );
+  for (const session of sorted) {
+    const ex = (session.exercises || []).find(e => e.exerciseId === exerciseId);
+    if (ex && ex.sets && ex.sets.length > 0) {
+      return { set: ex.sets[ex.sets.length - 1], exerciseType: ex.exerciseType };
+    }
+  }
+  return null;
+}
+
+/** Returns { set, exerciseType } for the best single set (PR) for exerciseId
+ *  across all saved sessions, or null. For strength: highest weight.
+ *  For cardio: highest distance, or longest duration as fallback. */
+function getPRForExercise(exerciseId) {
+  const sessions = Storage.getSessions();
+  let best = null;
+  let bestValue = -Infinity;
+  for (const session of sessions) {
+    const ex = (session.exercises || []).find(e => e.exerciseId === exerciseId);
+    if (!ex || !ex.sets || ex.sets.length === 0) continue;
+    for (const set of ex.sets) {
+      let value;
+      if (ex.exerciseType === 'strength') {
+        value = set.weight ?? -1;
+      } else {
+        if (set.distance != null) {
+          value = set.distance;
+        } else if (set.duration) {
+          const [m, s] = set.duration.split(':').map(Number);
+          value = m * 60 + (s || 0);
+        } else {
+          value = -1;
+        }
+      }
+      if (value > bestValue) {
+        bestValue = value;
+        best = { set, exerciseType: ex.exerciseType };
+      }
+    }
+  }
+  return best;
+}
+
+/** Returns an HTML string for the exercise history hint row, or '' if not shown. */
+function buildExerciseHistoryHint(exerciseId) {
+  const prefs = Storage.getSessionPrefs();
+  if (prefs.exerciseHistory === 'none') return '';
+  const result = prefs.exerciseHistory === 'pr'
+    ? getPRForExercise(exerciseId)
+    : getLastSetForExercise(exerciseId);
+  if (!result) return '';
+  const label = prefs.exerciseHistory === 'pr' ? '🏆 Personal Record' : '🕐 Last session';
+  const value = formatSetValues(result.set, result.exerciseType);
+  return `
+    <div class="exercise-history-hint">
+      <span class="exercise-history-hint-label">${label}</span>
+      <span class="exercise-history-hint-value">${value}</span>
+    </div>`;
+}
+
 // ─── Render: Active Session Exercises ─────────────────────────
 function formatSetValues(set, exerciseType) {
   if (exerciseType === 'strength') {
@@ -1003,6 +1108,7 @@ function renderActiveSessionExercises() {
         <span class="exercise-type-badge exercise-type-badge--${ex.exerciseType}">${ex.exerciseType === 'strength' ? 'Strength' : 'Cardio'}</span>
         <button class="btn-remove-exercise" data-exercise-id="${ex.exerciseId}" data-set-count="${ex.sets.length}" title="Remove exercise">✕</button>
       </div>
+      ${buildExerciseHistoryHint(ex.exerciseId)}
       <div class="active-exercise-sets">${setRows}</div>
       <button class="btn-add-set" data-exercise-id="${ex.exerciseId}">+ Add Set</button>
     `;
@@ -1066,19 +1172,28 @@ function openPickExerciseModal() {
 
 function closePickExerciseModal() {
   document.getElementById('modal-pick-exercise').classList.remove('open');
-  document.getElementById('modal-backdrop').classList.remove('open');
+  // Only close backdrop if edit session modal is not open
+  if (!document.getElementById('modal-edit-session').classList.contains('open')) {
+    document.getElementById('modal-backdrop').classList.remove('open');
+  }
 }
 
 function renderPickExerciseList() {
   const listEl = document.getElementById('pick-exercise-list');
 
-  // Build set of exercise IDs already added to the active session
-  const activeExerciseIds = new Set(
-    ((Storage.getActive() || {}).exercises || []).map(e => e.exerciseId)
+  // Build set of exercise IDs already added (active session or editing session)
+  // When swapping we don't exclude the exercise being swapped
+  const sessionExercises = state.editingMode === 'history'
+    ? (state.editingSession?.exercises || [])
+    : ((Storage.getActive() || {}).exercises || []);
+  const existingIds = new Set(
+    sessionExercises
+      .filter(e => e.exerciseId !== state.editingExerciseId)  // allow swap target
+      .map(e => e.exerciseId)
   );
 
   const exercises = (Storage.getExercises() || []).filter(ex => {
-    if (activeExerciseIds.has(ex.id)) return false;   // already in session
+    if (existingIds.has(ex.id)) return false;
     if (state.pickExerciseFilter === 'all') return true;
     return ex.type === state.pickExerciseFilter;
   });
@@ -1117,16 +1232,50 @@ function handleRemoveExercise(exerciseId, setCount) {
 }
 
 function handlePickExercise(exercise) {
-  Storage.addExerciseToActive({
-    exerciseId:   exercise.id,
-    exerciseName: exercise.name,
-    exerciseType: exercise.type,
-    sets:         [],
-    weightMode:   'weight',
-    baseWeight:   null,
-  });
-  closePickExerciseModal();
-  renderActiveSessionExercises();
+  if (state.editingMode === 'history') {
+    if (state.editingSession) {
+      if (state.editingExerciseId) {
+        // Swap: replace the existing exercise entry, keep sets if same type
+        const idx = state.editingSession.exercises.findIndex(e => e.exerciseId === state.editingExerciseId);
+        if (idx !== -1) {
+          const existing = state.editingSession.exercises[idx];
+          const keepSets = existing.exerciseType === exercise.type;
+          state.editingSession.exercises[idx] = {
+            exerciseId:   exercise.id,
+            exerciseName: exercise.name,
+            exerciseType: exercise.type,
+            sets:         keepSets ? existing.sets : [],
+            weightMode:   'weight',
+            baseWeight:   null,
+          };
+        }
+      } else {
+        // Add new exercise to editing session
+        state.editingSession.exercises.push({
+          exerciseId:   exercise.id,
+          exerciseName: exercise.name,
+          exerciseType: exercise.type,
+          sets:         [],
+          weightMode:   'weight',
+          baseWeight:   null,
+        });
+      }
+      state.editingExerciseId = null;
+      closePickExerciseModal();
+      renderEditExercises();
+    }
+  } else {
+    Storage.addExerciseToActive({
+      exerciseId:   exercise.id,
+      exerciseName: exercise.name,
+      exerciseType: exercise.type,
+      sets:         [],
+      weightMode:   'weight',
+      baseWeight:   null,
+    });
+    closePickExerciseModal();
+    renderActiveSessionExercises();
+  }
 }
 
 function applyWeightMode(mode, weightUnit) {
@@ -1165,6 +1314,11 @@ function openLogSetModal(exerciseId) {
   state.logSetExerciseId = exerciseId;
   const units = Storage.getUnits();
 
+  // Determine the source exercise entry (active session or editing session)
+  const sourceEx = state.editingMode === 'history'
+    ? (state.editingSession?.exercises || []).find(e => e.exerciseId === exerciseId)
+    : ((Storage.getActive() || {}).exercises || []).find(e => e.exerciseId === exerciseId);
+
   // Render header
   document.getElementById('modal-set-header').innerHTML = `
     <span class="modal-set-exercise-name">${ex.name}</span>
@@ -1180,16 +1334,14 @@ function openLogSetModal(exerciseId) {
     const weightGroup = document.getElementById('set-weight-group');
     if (ex.trackWeight) {
       weightGroup.style.display = '';
-      // Restore persisted weight mode and base weight for this exercise
-      const activeEx   = ((Storage.getActive() || {}).exercises || []).find(e => e.exerciseId === exerciseId);
-      const weightMode = activeEx?.weightMode || 'weight';
+      const weightMode = sourceEx?.weightMode || 'weight';
       document.getElementById('set-weight-mode-toggle').checked = (weightMode === 'weight');
       applyWeightMode(weightMode, units.weight);
-      // Restore base/machine weight
+      // Base/machine weight
       const baseWeightGroup = document.getElementById('set-base-weight-group');
       baseWeightGroup.style.display = '';
       document.getElementById('set-base-weight-label').textContent = `Machine weight (${units.weight})`;
-      const savedBase = activeEx?.baseWeight ?? null;
+      const savedBase = sourceEx?.baseWeight ?? null;
       document.getElementById('set-base-weight').value = savedBase !== null ? savedBase : '';
     } else {
       weightGroup.style.display = 'none';
@@ -1207,14 +1359,40 @@ function openLogSetModal(exerciseId) {
     }
   }
 
-  // Clear non-weight inputs (weight is cleared by applyWeightMode above for strength)
+  // Clear inputs, then optionally pre-populate from an existing set (edit mode)
   ['set-reps','set-duration','set-distance','set-calories'].forEach(id => {
     const el = document.getElementById(id);
     if (el) el.value = '';
   });
-  // For exercises without trackWeight, clear the weight field too
   if (ex.type !== 'strength' || !ex.trackWeight) {
     document.getElementById('set-weight').value = '';
+  }
+
+  // Pre-populate when editing an existing set
+  if (state.editingSetIndex !== null && sourceEx) {
+    const existingSet = sourceEx.sets[state.editingSetIndex];
+    if (existingSet) {
+      if (ex.type === 'strength') {
+        document.getElementById('set-reps').value = existingSet.reps ?? '';
+        if (ex.trackWeight && existingSet.weight != null) {
+          document.getElementById('set-weight').value = existingSet.weight;
+        }
+        if (existingSet.baseWeight != null) {
+          document.getElementById('set-base-weight').value = existingSet.baseWeight;
+        }
+        // Apply correct weight mode for this set
+        const setWeightMode = existingSet.weightUnit === 'plates' ? 'plates' : 'weight';
+        document.getElementById('set-weight-mode-toggle').checked = (setWeightMode === 'weight');
+        applyWeightMode(setWeightMode, units.weight);
+        if (existingSet.weight != null) {
+          document.getElementById('set-weight').value = existingSet.weight;
+        }
+      } else {
+        document.getElementById('set-duration').value  = existingSet.duration  ?? '';
+        document.getElementById('set-distance').value  = existingSet.distance  ?? '';
+        document.getElementById('set-calories').value  = existingSet.calories  ?? '';
+      }
+    }
   }
 
   document.getElementById('modal-log-set').classList.add('open');
@@ -1222,9 +1400,13 @@ function openLogSetModal(exerciseId) {
 }
 
 function closeLogSetModal() {
-  state.logSetExerciseId = null;
+  state.logSetExerciseId  = null;
+  state.editingSetIndex   = null;
   document.getElementById('modal-log-set').classList.remove('open');
-  document.getElementById('modal-backdrop').classList.remove('open');
+  // Only close backdrop if edit session modal is not open
+  if (!document.getElementById('modal-edit-session').classList.contains('open')) {
+    document.getElementById('modal-backdrop').classList.remove('open');
+  }
 }
 
 function handleLogSet() {
@@ -1280,9 +1462,23 @@ function handleLogSet() {
     };
   }
 
-  Storage.addSetToActiveExercise(exerciseId, set);
-  closeLogSetModal();
-  renderActiveSessionExercises();
+  if (state.editingMode === 'history') {
+    const editEx = (state.editingSession.exercises || []).find(e => e.exerciseId === exerciseId);
+    if (editEx) {
+      if (state.editingSetIndex !== null) {
+        editEx.sets[state.editingSetIndex] = set;   // replace
+      } else {
+        editEx.sets.push(set);                       // append
+      }
+    }
+    state.editingSetIndex = null;
+    closeLogSetModal();
+    renderEditExercises();
+  } else {
+    Storage.addSetToActiveExercise(exerciseId, set);
+    closeLogSetModal();
+    renderActiveSessionExercises();
+  }
 }
 
 // ─── Handlers ─────────────────────────────────────────────────
@@ -1505,6 +1701,197 @@ function handleDeleteNote(sessionId) {
 function handleDeleteSession(id) {
   if (!confirm('Delete this session? This cannot be undone.')) return;
   Storage.deleteSession(id);
+  renderReports();
+}
+
+// ─── Edit Session Modal ───────────────────────────────────────
+function openEditSessionModal(sessionId) {
+  const sessions = Storage.getSessions();
+  const session  = sessions.find(s => s.id === sessionId);
+  if (!session) return;
+
+  state.editingSessionId = sessionId;
+  state.editingSession   = JSON.parse(JSON.stringify(session));
+  state.editingMode      = 'history';
+
+  // Populate Session Details fields
+  document.getElementById('edit-session-date').value  = session.date   || '';
+  document.getElementById('edit-session-time').value  = session.startTime || '';
+  const totalMins = Math.round((session.durationSeconds || 0) / 60);
+  document.getElementById('edit-session-duration-h').value = Math.floor(totalMins / 60);
+  document.getElementById('edit-session-duration-m').value = totalMins % 60;
+
+  // Populate type/subtype selects
+  populateEditTypeSelect(session.sessionTypeId);
+  populateEditSubtypeSelect(session.sessionTypeId, session.sessionSubtypeId);
+
+  // Render exercises
+  renderEditExercises();
+
+  document.getElementById('modal-edit-session').classList.add('open');
+  document.getElementById('modal-backdrop').classList.add('open');
+}
+
+function closeEditSessionModal() {
+  state.editingSessionId  = null;
+  state.editingSession    = null;
+  state.editingExerciseId = null;
+  state.editingSetIndex   = null;
+  state.editingMode       = 'active';
+  // Close any sub-modals that may have been opened from within edit mode
+  state.logSetExerciseId  = null;
+  document.getElementById('modal-edit-session').classList.remove('open');
+  document.getElementById('modal-pick-exercise').classList.remove('open');
+  document.getElementById('modal-log-set').classList.remove('open');
+  document.getElementById('modal-backdrop').classList.remove('open');
+}
+
+function populateEditTypeSelect(selectedTypeId) {
+  const select = document.getElementById('edit-session-type');
+  const types  = Storage.getTypes() || [];
+  select.innerHTML = types.map(t =>
+    `<option value="${t.id}"${t.id === selectedTypeId ? ' selected' : ''}>${t.emoji} ${t.name}</option>`
+  ).join('');
+}
+
+function populateEditSubtypeSelect(typeId, selectedSubtypeId) {
+  const types    = Storage.getTypes() || [];
+  const type     = types.find(t => t.id === typeId);
+  const subtypes = type?.subtypes || [];
+  const group    = document.getElementById('edit-subtype-group');
+  const select   = document.getElementById('edit-session-subtype');
+
+  if (subtypes.length === 0) {
+    group.style.display = 'none';
+    return;
+  }
+  group.style.display = '';
+  select.innerHTML =
+    `<option value="">No subtype</option>` +
+    subtypes.map(st =>
+      `<option value="${st.id}"${st.id === selectedSubtypeId ? ' selected' : ''}>${st.name}</option>`
+    ).join('');
+}
+
+function renderEditExercises() {
+  const listEl = document.getElementById('edit-exercises-list');
+  if (!listEl) return;
+  const exercises = (state.editingSession?.exercises || []);
+
+  if (exercises.length === 0) {
+    listEl.innerHTML = '<p class="exercise-empty-hint">No exercises in this session.</p>';
+    return;
+  }
+
+  listEl.innerHTML = exercises.map(ex => `
+    <div class="edit-exercise-block" data-exercise-id="${ex.exerciseId}">
+      <div class="edit-exercise-header">
+        <span class="active-exercise-card-name">${ex.exerciseName}</span>
+        <span class="exercise-type-badge exercise-type-badge--${ex.exerciseType}">${ex.exerciseType === 'strength' ? 'Strength' : 'Cardio'}</span>
+        <button class="btn-edit-swap-exercise" data-exercise-id="${ex.exerciseId}">Swap</button>
+        <button class="btn-edit-remove-exercise" data-exercise-id="${ex.exerciseId}">✕</button>
+      </div>
+      <div class="edit-set-list">
+        ${(ex.sets || []).map((set, i) => `
+          <div class="edit-set-row">
+            <span class="active-set-label">Set ${i + 1}</span>
+            <span class="active-set-values edit-set-values">${formatSetValues(set, ex.exerciseType)}</span>
+            <button class="btn-edit-set"   data-exercise-id="${ex.exerciseId}" data-index="${i}" title="Edit set">✏️</button>
+            <button class="btn-delete-set" data-exercise-id="${ex.exerciseId}" data-index="${i}" title="Delete set">✕</button>
+          </div>
+        `).join('')}
+      </div>
+      <button class="btn-add-set btn-edit-add-set" data-exercise-id="${ex.exerciseId}">+ Add Set</button>
+    </div>
+  `).join('');
+
+  // Delegation — swap exercise
+  listEl.querySelectorAll('.btn-edit-swap-exercise').forEach(btn => {
+    btn.addEventListener('click', () => {
+      state.editingExerciseId = btn.dataset.exerciseId;
+      state.pickExerciseFilter = 'all';
+      document.querySelectorAll('#pick-exercise-filter-pills .filter-pill').forEach(p =>
+        p.classList.toggle('filter-pill--active', p.dataset.filter === 'all')
+      );
+      renderPickExerciseList();
+      document.getElementById('modal-pick-exercise').classList.add('open');
+      document.getElementById('modal-backdrop').classList.add('open');
+    });
+  });
+
+  // Delegation — remove exercise
+  listEl.querySelectorAll('.btn-edit-remove-exercise').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const exId  = btn.dataset.exerciseId;
+      const entry = (state.editingSession.exercises || []).find(e => e.exerciseId === exId);
+      const sets  = entry?.sets?.length || 0;
+      if (sets > 0 && !confirm(`Remove "${entry.exerciseName}" and its ${sets} set${sets > 1 ? 's' : ''}?`)) return;
+      state.editingSession.exercises = state.editingSession.exercises.filter(e => e.exerciseId !== exId);
+      renderEditExercises();
+    });
+  });
+
+  // Delegation — edit set
+  listEl.querySelectorAll('.btn-edit-set').forEach(btn => {
+    btn.addEventListener('click', () => {
+      state.editingExerciseId = btn.dataset.exerciseId;
+      state.editingSetIndex   = parseInt(btn.dataset.index, 10);
+      openLogSetModal(btn.dataset.exerciseId);
+    });
+  });
+
+  // Delegation — delete set
+  listEl.querySelectorAll('.btn-delete-set').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const exId = btn.dataset.exerciseId;
+      const idx  = parseInt(btn.dataset.index, 10);
+      const entry = (state.editingSession.exercises || []).find(e => e.exerciseId === exId);
+      if (entry) entry.sets.splice(idx, 1);
+      renderEditExercises();
+    });
+  });
+
+  // Delegation — add set
+  listEl.querySelectorAll('.btn-edit-add-set').forEach(btn => {
+    btn.addEventListener('click', () => {
+      state.editingExerciseId = btn.dataset.exerciseId;
+      state.editingSetIndex   = null;
+      openLogSetModal(btn.dataset.exerciseId);
+    });
+  });
+}
+
+function handleSaveEditedSession() {
+  const s = state.editingSession;
+  if (!s) return;
+
+  s.date      = document.getElementById('edit-session-date').value;
+  s.startTime = document.getElementById('edit-session-time').value;
+  const h = parseInt(document.getElementById('edit-session-duration-h').value, 10) || 0;
+  const m = parseInt(document.getElementById('edit-session-duration-m').value, 10) || 0;
+  s.durationSeconds = (h * 60 + m) * 60;
+
+  const typeSelect  = document.getElementById('edit-session-type');
+  const chosenType  = (Storage.getTypes() || []).find(t => t.id === typeSelect.value);
+  if (chosenType) {
+    s.sessionTypeId    = chosenType.id;
+    s.sessionTypeName  = chosenType.name;
+    s.sessionTypeEmoji = chosenType.emoji;
+  }
+  const subtypeGroup  = document.getElementById('edit-subtype-group');
+  const subtypeSelect = document.getElementById('edit-session-subtype');
+  if (subtypeGroup.style.display !== 'none' && subtypeSelect.value) {
+    const subtype = (chosenType?.subtypes || []).find(st => st.id === subtypeSelect.value);
+    s.sessionSubtypeId   = subtype?.id   || null;
+    s.sessionSubtypeName = subtype?.name || null;
+  } else {
+    s.sessionSubtypeId   = null;
+    s.sessionSubtypeName = null;
+  }
+
+  s.manuallyEdited = true;
+  Storage.updateSession(s.id, s);
+  closeEditSessionModal();
   renderReports();
 }
 
@@ -1912,6 +2299,7 @@ function wireEvents() {
     closeAddExerciseModal();
     closePickExerciseModal();
     closeLogSetModal();
+    closeEditSessionModal();
   });
 
   document.getElementById('btn-open-export').addEventListener('click', openExportModal);
@@ -1955,6 +2343,17 @@ function wireEvents() {
   document.getElementById('btn-back-units').addEventListener('click', () => navigate('settings'));
   document.getElementById('btn-back-data').addEventListener('click',  () => navigate('settings'));
   document.getElementById('btn-back-about').addEventListener('click', () => navigate('settings'));
+  document.getElementById('btn-back-sessions-settings').addEventListener('click', () => navigate('settings'));
+
+  document.querySelectorAll('input[name="exercise-history"]').forEach(radio => {
+    radio.addEventListener('change', () => {
+      const prefs = Storage.getSessionPrefs();
+      prefs.exerciseHistory = radio.value;
+      Storage.saveSessionPrefs(prefs);
+      // Live-update hints if a session is currently running
+      if (Storage.getActive()) renderActiveSessionExercises();
+    });
+  });
 
   // Units radio buttons
   document.querySelectorAll('input[name="weight-unit"]').forEach(radio => {
@@ -2033,6 +2432,26 @@ function wireEvents() {
   document.getElementById('btn-log-set').addEventListener('click', handleLogSet);
   document.getElementById('btn-cancel-set').addEventListener('click', closeLogSetModal);
   document.getElementById('set-weight-mode-toggle').addEventListener('change', handleWeightModeToggle);
+
+  // Edit session modal
+  document.getElementById('btn-save-edit-session').addEventListener('click', handleSaveEditedSession);
+  document.getElementById('btn-cancel-edit-session').addEventListener('click', closeEditSessionModal);
+
+  document.getElementById('edit-session-type').addEventListener('change', () => {
+    const typeId = document.getElementById('edit-session-type').value;
+    populateEditSubtypeSelect(typeId, null);
+  });
+
+  document.getElementById('btn-edit-add-exercise').addEventListener('click', () => {
+    state.editingExerciseId  = null;
+    state.pickExerciseFilter = 'all';
+    document.querySelectorAll('#pick-exercise-filter-pills .filter-pill').forEach(p =>
+      p.classList.toggle('filter-pill--active', p.dataset.filter === 'all')
+    );
+    renderPickExerciseList();
+    document.getElementById('modal-pick-exercise').classList.add('open');
+    document.getElementById('modal-backdrop').classList.add('open');
+  });
 }
 
 // ─── Init ─────────────────────────────────────────────────────

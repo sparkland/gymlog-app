@@ -315,8 +315,7 @@ body {
 /* ─── Active Session View ────────────────────────────────────── */
 #view-session {
   bottom: 0;
-  justify-content: center;
-  align-items: center;
+  align-items: stretch;
   padding: 24px 20px;
   gap: 0;
   background: var(--bg-primary);
@@ -2070,9 +2069,164 @@ body {
   padding: 4px 0;
 }
 
+/* ─── Exercise History Hint (Last Session / PR) ─────────────── */
+.exercise-history-hint {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 6px 0 8px;
+  padding: 8px 12px;
+  background: var(--bg-primary);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  font-size: 0.8125rem;
+}
+.exercise-history-hint-label {
+  color: var(--text-muted);
+  flex-shrink: 0;
+}
+.exercise-history-hint-value {
+  color: var(--accent);
+  font-weight: 600;
+  margin-left: auto;
+  text-align: right;
+}
+
+/* Sub-description text inside Settings radio rows */
+.radio-row-sub {
+  display: block;
+  font-size: 0.75rem;
+  font-weight: 400;
+  color: var(--text-muted);
+  margin-top: 2px;
+}
+
 /* ─── Machine / Base Weight field ────────────────────────────── */
 .base-weight-row {
   margin-top: 2px;
   padding-top: 14px;
   border-top: 1px solid var(--border);
 }
+
+/* ─── Edit Session Modal ─────────────────────────────────────── */
+.modal-edit-scroll {
+  flex: 1;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+}
+.edit-section { margin-bottom: 20px; }
+.edit-section-label {
+  font-size: 0.6875rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--text-muted);
+  margin-bottom: 8px;
+}
+.edit-exercise-block {
+  background: var(--bg-elevated);
+  border-radius: var(--radius-md);
+  padding: 12px 14px;
+  margin-bottom: 10px;
+}
+.edit-exercise-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 8px;
+}
+.edit-set-list { margin-bottom: 6px; }
+.edit-set-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 0;
+  border-top: 1px solid var(--border);
+  font-size: 0.875rem;
+}
+.edit-set-values { flex: 1; color: var(--text-secondary); }
+.btn-edit-set, .btn-delete-set {
+  -webkit-appearance: none; appearance: none;
+  background: none; border: none;
+  color: var(--text-muted); cursor: pointer;
+  font-size: 0.75rem; padding: 4px;
+  border-radius: var(--radius-sm);
+  transition: color var(--transition);
+  -webkit-tap-highlight-color: transparent;
+}
+.btn-edit-set:hover   { color: var(--accent); }
+.btn-delete-set:hover { color: var(--danger); }
+.btn-edit-swap-exercise {
+  -webkit-appearance: none; appearance: none;
+  margin-left: auto;
+  font-size: 0.75rem;
+  color: var(--accent);
+  background: none; border: none; cursor: pointer;
+  padding: 2px 6px;
+  -webkit-tap-highlight-color: transparent;
+}
+.btn-edit-remove-exercise {
+  -webkit-appearance: none; appearance: none;
+  background: none; border: none;
+  color: var(--text-muted); cursor: pointer;
+  font-size: 0.75rem; padding: 4px;
+  border-radius: var(--radius-sm);
+  transition: color var(--transition);
+  -webkit-tap-highlight-color: transparent;
+}
+.btn-edit-remove-exercise:hover { color: var(--danger); }
+.edit-add-exercise-btn { width: 100%; margin-top: 4px; }
+.datetime-row {
+  display: flex;
+  gap: 12px;
+}
+.duration-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+.duration-sep {
+  font-size: 0.875rem;
+  color: var(--text-muted);
+}
+
+/* Edit button on session history cards */
+.session-edit-btn {
+  -webkit-appearance: none; appearance: none;
+  background: none; border: none;
+  color: var(--text-muted);
+  font-size: 0.875rem;
+  padding: 6px; cursor: pointer;
+  border-radius: var(--radius-sm);
+  transition: color var(--transition);
+  -webkit-tap-highlight-color: transparent;
+  flex-shrink: 0;
+}
+.session-edit-btn:hover { color: var(--accent); }
+
+/* Edited badge on session card */
+.session-edited-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  font-size: 0.6875rem;
+  color: var(--text-muted);
+  background: var(--bg-elevated);
+  border-radius: var(--radius-sm);
+  padding: 2px 6px;
+  margin-bottom: 2px;
+}
+
+/* Styled <select> to match inputs */
+.form-select {
+  -webkit-appearance: none; appearance: none;
+  background: var(--bg-elevated) url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24'%3E%3Cpath fill='%236b7280' d='M7 10l5 5 5-5z'/%3E%3C/svg%3E") no-repeat right 14px center;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  color: var(--text-primary);
+  padding: 12px 36px 12px 14px;
+  font-size: 1rem; font-family: inherit;
+  outline: none; width: 100%;
+  transition: border-color var(--transition);
+}
+.form-select:focus { border-color: var(--accent); }

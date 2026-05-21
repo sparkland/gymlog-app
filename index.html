@@ -10,7 +10,7 @@
   <meta http-equiv="Pragma" content="no-cache">
   <meta http-equiv="Expires" content="0">
   <title>GymLog</title>
-  <link rel="stylesheet" href="styles.css?v=14">
+  <link rel="stylesheet" href="styles.css?v=18">
 </head>
 <body>
 
@@ -228,6 +228,14 @@
       <p>Preferences &amp; app info</p>
     </div>
     <div class="settings-list">
+      <button class="settings-row" data-nav="sessions-settings">
+        <span class="settings-row-icon">🏃</span>
+        <div class="settings-row-info">
+          <h3>Sessions</h3>
+          <p>Exercise history display during sessions</p>
+        </div>
+        <span class="settings-row-chevron">›</span>
+      </button>
       <button class="settings-row" data-nav="units">
         <span class="settings-row-icon">⚖️</span>
         <div class="settings-row-info">
@@ -294,6 +302,44 @@
     </div>
   </div>
 
+  <!-- ═══════════════ SESSIONS SETTINGS VIEW ═══════════════ -->
+  <div id="view-sessions-settings" class="view">
+    <div class="view-header">
+      <button class="btn-back" id="btn-back-sessions-settings">← Settings</button>
+      <h1>Sessions</h1>
+      <p>Customise what you see during a session</p>
+    </div>
+    <div class="settings-section">
+      <div class="settings-section-label">Exercise History</div>
+      <div class="settings-card">
+        <label class="radio-row">
+          <span class="radio-row-label">
+            Show last session's result
+            <span class="radio-row-sub">Displays the final set from the most recent session containing this exercise</span>
+          </span>
+          <input type="radio" name="exercise-history" value="last" id="eh-last">
+          <span class="radio-custom"></span>
+        </label>
+        <label class="radio-row">
+          <span class="radio-row-label">
+            Show Personal Record (PR)
+            <span class="radio-row-sub">Displays the best single set ever recorded for this exercise</span>
+          </span>
+          <input type="radio" name="exercise-history" value="pr" id="eh-pr">
+          <span class="radio-custom"></span>
+        </label>
+        <label class="radio-row">
+          <span class="radio-row-label">
+            Don't show previous results
+            <span class="radio-row-sub">No history is displayed on the exercise card</span>
+          </span>
+          <input type="radio" name="exercise-history" value="none" id="eh-none">
+          <span class="radio-custom"></span>
+        </label>
+      </div>
+    </div>
+  </div>
+
   <!-- ═══════════════ DATA VIEW ═══════════════ -->
   <div id="view-data" class="view">
     <div class="view-header">
@@ -350,7 +396,7 @@
     <div class="about-hero">
       <div class="about-hero-icon">🏋️</div>
       <h2 class="about-app-name">Gym<span>Log</span></h2>
-      <p class="about-version">version 1.4.5</p>
+      <p class="about-version">version 1.5</p>
     </div>
     <div class="settings-section">
       <div class="settings-section-label">Creator</div>
@@ -371,7 +417,22 @@
       <div class="settings-card release-notes">
         <div class="release-version">
           <div class="release-version-header">
-            <span class="release-badge">v1.4.5</span>
+            <span class="release-badge">v1.5</span>
+            <span class="release-version-title">Report Editing &amp; Rory Bug Fix</span>
+          </div>
+          <ul class="release-list">
+            <li>Added ability to edit any completed session from Reports history — update date, start time, duration, session type and subtype after the fact</li>
+            <li>Edit individual exercises within a completed session: swap an exercise, remove an exercise (with confirmation when sets are logged), or add new exercises</li>
+            <li>Edit, delete or add sets for each exercise within a completed session — set values pre-populate the Log Set modal for easy correction</li>
+            <li>Edited sessions display an ✏️ Edited badge on their session card so it's clear the record was amended</li>
+            <li>Added exercise history hint (Last Session / Personal Record) on exercise cards during active sessions — configurable in Settings → Sessions</li>
+            <li>Fixed bug where the Add Exercise picker was obscured behind the Edit Session modal and could not be interacted with</li>
+            <li>Fixed bug where closing Edit Session left the Add Exercise picker overlaid on the Reports screen</li>
+          </ul>
+        </div>
+        <div class="release-version">
+          <div class="release-version-header">
+            <span class="release-badge release-badge--muted">v1.4.5</span>
             <span class="release-version-title">Weight Recording &amp; Rory Enhancements</span>
           </div>
           <ul class="release-list">
@@ -603,6 +664,60 @@
     </div>
   </div>
 
+  <!-- ═══════════════ EDIT SESSION MODAL ═══════════════ -->
+  <div class="modal modal--tall" id="modal-edit-session">
+    <div class="modal-handle"></div>
+    <h2>Edit Session</h2>
+    <div class="modal-edit-scroll">
+
+      <!-- ── Section: Session Details ── -->
+      <div class="edit-section">
+        <div class="edit-section-label">Session Details</div>
+        <div class="modal-form">
+          <div class="form-group">
+            <label for="edit-session-date">Date</label>
+            <input type="date" id="edit-session-date">
+          </div>
+          <div class="datetime-row">
+            <div class="form-group" style="flex:1">
+              <label for="edit-session-time">Start Time</label>
+              <input type="time" id="edit-session-time">
+            </div>
+            <div class="form-group" style="flex:1">
+              <label for="edit-session-duration-h">Duration</label>
+              <div class="duration-row">
+                <input type="number" id="edit-session-duration-h" min="0" max="23" placeholder="0" style="width:60px">
+                <span class="duration-sep">h</span>
+                <input type="number" id="edit-session-duration-m" min="0" max="59" placeholder="00" style="width:60px">
+                <span class="duration-sep">m</span>
+              </div>
+            </div>
+          </div>
+          <div class="form-group">
+            <label for="edit-session-type">Session Type</label>
+            <select class="form-select" id="edit-session-type"></select>
+          </div>
+          <div class="form-group" id="edit-subtype-group">
+            <label for="edit-session-subtype">Subtype</label>
+            <select class="form-select" id="edit-session-subtype"></select>
+          </div>
+        </div>
+      </div>
+
+      <!-- ── Section: Exercises ── -->
+      <div class="edit-section">
+        <div class="edit-section-label">Exercises</div>
+        <div id="edit-exercises-list"></div>
+        <button class="btn-secondary edit-add-exercise-btn" id="btn-edit-add-exercise">+ Add Exercise</button>
+      </div>
+
+    </div>
+    <div class="modal-actions" style="margin-top:16px">
+      <button class="btn-primary"   id="btn-save-edit-session">Save Changes</button>
+      <button class="btn-secondary" id="btn-cancel-edit-session">Cancel</button>
+    </div>
+  </div>
+
   <!-- ═══════════════ PICK EXERCISE MODAL ═══════════════ -->
   <div class="modal modal--tall" id="modal-pick-exercise">
     <div class="modal-handle"></div>
@@ -699,7 +814,7 @@
   <!-- Toast notification -->
   <div id="toast" class="toast" role="alert" aria-live="assertive"></div>
 
-  <script src="app.js?v=14"></script>
+  <script src="app.js?v=18"></script>
   <script>
     // Register service worker for network-first caching (requires HTTPS or localhost).
     // The SW never touches localStorage — all user data (sessions, name, units) is safe.
