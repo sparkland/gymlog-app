@@ -203,6 +203,14 @@ const Storage = {
     active.exercises = (active.exercises || []).filter(e => e.exerciseId !== exerciseId);
     Storage.saveActive(active);
   },
+  setExerciseWeightMode(exerciseId, mode) {
+    const active = Storage.getActive();
+    if (!active) return;
+    const ex = (active.exercises || []).find(e => e.exerciseId === exerciseId);
+    if (!ex) return;
+    ex.weightMode = mode;   // 'weight' | 'plates'
+    Storage.saveActive(active);
+  },
 };
 
 // ─── App State ────────────────────────────────────────────────
@@ -939,7 +947,11 @@ function handleDeleteExercise(id) {
 function formatSetValues(set, exerciseType) {
   if (exerciseType === 'strength') {
     let str = `${set.reps} rep${set.reps !== 1 ? 's' : ''}`;
-    if (set.weight != null && set.weight !== '') str += ` · ${set.weight}${set.weightUnit}`;
+    if (set.weight != null && set.weight !== '') {
+      str += set.weightUnit === 'plates'
+        ? ` · ${set.weight} plate${set.weight !== 1 ? 's' : ''}`
+        : ` · ${set.weight}${set.weightUnit}`;
+    }
     return str;
   } else {
     let str = set.duration || '';
@@ -1098,10 +1110,35 @@ function handlePickExercise(exercise) {
     exerciseId:   exercise.id,
     exerciseName: exercise.name,
     exerciseType: exercise.type,
-    sets: [],
+    sets:         [],
+    weightMode:   'weight',
   });
   closePickExerciseModal();
   renderActiveSessionExercises();
+}
+
+function applyWeightMode(mode, weightUnit) {
+  const label = document.getElementById('set-weight-label');
+  const input = document.getElementById('set-weight');
+  if (mode === 'plates') {
+    label.textContent = 'Plates';
+    input.step        = '1';
+    input.placeholder = 'e.g. 5';
+  } else {
+    label.textContent = `Weight (${weightUnit})`;
+    input.step        = '0.5';
+    input.placeholder = 'e.g. 60';
+  }
+  input.value = '';
+}
+
+function handleWeightModeToggle() {
+  const mode  = document.getElementById('set-weight-mode-toggle').checked ? 'weight' : 'plates';
+  const units = Storage.getUnits();
+  applyWeightMode(mode, units.weight);
+  if (state.logSetExerciseId) {
+    Storage.setExerciseWeightMode(state.logSetExerciseId, mode);
+  }
 }
 
 function openLogSetModal(exerciseId) {
@@ -1125,18 +1162,20 @@ function openLogSetModal(exerciseId) {
   if (ex.type === 'strength') {
     strengthFields.style.display = '';
     cardioFields.style.display   = 'none';
-    // Update weight label
     const weightGroup = document.getElementById('set-weight-group');
     if (ex.trackWeight) {
       weightGroup.style.display = '';
-      document.getElementById('set-weight-label').textContent = `Weight (${units.weight})`;
+      // Restore persisted weight mode for this exercise
+      const activeEx   = ((Storage.getActive() || {}).exercises || []).find(e => e.exerciseId === exerciseId);
+      const weightMode = activeEx?.weightMode || 'weight';
+      document.getElementById('set-weight-mode-toggle').checked = (weightMode === 'weight');
+      applyWeightMode(weightMode, units.weight);
     } else {
       weightGroup.style.display = 'none';
     }
   } else {
     strengthFields.style.display = 'none';
     cardioFields.style.display   = '';
-    // Update distance label
     const distanceGroup = document.getElementById('set-distance-group');
     if (ex.trackDistance) {
       distanceGroup.style.display = '';
@@ -1146,11 +1185,15 @@ function openLogSetModal(exerciseId) {
     }
   }
 
-  // Clear inputs
-  ['set-reps','set-weight','set-duration','set-distance','set-calories'].forEach(id => {
+  // Clear non-weight inputs (weight is cleared by applyWeightMode above for strength)
+  ['set-reps','set-duration','set-distance','set-calories'].forEach(id => {
     const el = document.getElementById(id);
     if (el) el.value = '';
   });
+  // For exercises without trackWeight, clear the weight field too
+  if (ex.type !== 'strength' || !ex.trackWeight) {
+    document.getElementById('set-weight').value = '';
+  }
 
   document.getElementById('modal-log-set').classList.add('open');
   document.getElementById('modal-backdrop').classList.add('open');
@@ -1180,11 +1223,15 @@ function handleLogSet() {
       document.getElementById('set-reps').focus();
       return;
     }
-    const weightVal = document.getElementById('set-weight').value;
+    const weightVal  = document.getElementById('set-weight').value;
+    const activeEx   = ((Storage.getActive() || {}).exercises || []).find(e => e.exerciseId === exerciseId);
+    const weightMode = activeEx?.weightMode || 'weight';
     set = {
       reps,
       weight:     ex.trackWeight && weightVal !== '' ? parseFloat(weightVal) : null,
-      weightUnit: units.weight,
+      weightUnit: ex.trackWeight && weightVal !== ''
+        ? (weightMode === 'plates' ? 'plates' : units.weight)
+        : null,
     };
   } else {
     const duration = document.getElementById('set-duration').value.trim();
@@ -1588,7 +1635,11 @@ function exportJSON() {
 function formatSetForPDF(set, type) {
   if (type === 'strength') {
     let str = `${set.reps} rep${set.reps !== 1 ? 's' : ''}`;
-    if (set.weight != null) str += ` @ ${set.weight}${set.weightUnit}`;
+    if (set.weight != null) {
+      str += set.weightUnit === 'plates'
+        ? ` @ ${set.weight} plate${set.weight !== 1 ? 's' : ''}`
+        : ` @ ${set.weight}${set.weightUnit}`;
+    }
     return str;
   }
   let str = set.duration || '';
@@ -1948,6 +1999,7 @@ function wireEvents() {
   // Set logger modal
   document.getElementById('btn-log-set').addEventListener('click', handleLogSet);
   document.getElementById('btn-cancel-set').addEventListener('click', closeLogSetModal);
+  document.getElementById('set-weight-mode-toggle').addEventListener('change', handleWeightModeToggle);
 }
 
 // ─── Init ─────────────────────────────────────────────────────
