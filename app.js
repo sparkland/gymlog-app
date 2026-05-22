@@ -1308,7 +1308,13 @@ function handleWeightModeToggle() {
   const units = Storage.getUnits();
   applyWeightMode(mode, units.weight);
   if (state.logSetExerciseId) {
-    Storage.setExerciseWeightMode(state.logSetExerciseId, mode);
+    if (state.editingMode === 'history') {
+      // Update the in-memory copy, not the active session
+      const editEx = (state.editingSession?.exercises || []).find(e => e.exerciseId === state.logSetExerciseId);
+      if (editEx) editEx.weightMode = mode;
+    } else {
+      Storage.setExerciseWeightMode(state.logSetExerciseId, mode);
+    }
   }
 }
 
@@ -1436,12 +1442,19 @@ function handleLogSet() {
     }
     const weightVal    = document.getElementById('set-weight').value;
     const baseWeightVal= document.getElementById('set-base-weight').value;
-    const activeEx     = ((Storage.getActive() || {}).exercises || []).find(e => e.exerciseId === exerciseId);
-    const weightMode   = activeEx?.weightMode || 'weight';
+    // Read weight mode from the correct source depending on edit context
+    const sourceExForMode = state.editingMode === 'history'
+      ? (state.editingSession?.exercises || []).find(e => e.exerciseId === exerciseId)
+      : ((Storage.getActive() || {}).exercises || []).find(e => e.exerciseId === exerciseId);
+    const weightMode   = sourceExForMode?.weightMode || 'weight';
     const baseWeightNum= ex.trackWeight && baseWeightVal !== '' ? parseFloat(baseWeightVal) : null;
-    // Persist the base weight so it pre-fills for subsequent sets
+    // Persist base weight to the correct source
     if (ex.trackWeight) {
-      Storage.setExerciseBaseWeight(exerciseId, baseWeightNum);
+      if (state.editingMode === 'history') {
+        if (sourceExForMode) sourceExForMode.baseWeight = baseWeightNum;
+      } else {
+        Storage.setExerciseBaseWeight(exerciseId, baseWeightNum);
+      }
     }
     set = {
       reps,
