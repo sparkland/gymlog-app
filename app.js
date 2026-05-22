@@ -2,18 +2,20 @@
 
 // ─── Constants ────────────────────────────────────────────────
 const STORAGE_KEYS = {
-  TYPES:         'gym_session_types',
-  SESSIONS:      'gym_sessions',
-  ACTIVE:        'gym_active_session',
-  USER_NAME:     'gym_user_name',
-  UNITS:         'gym_units',
-  EXERCISES:     'gym_exercises',
-  SESSION_PREFS: 'gym_session_prefs',
+  TYPES:          'gym_session_types',
+  SESSIONS:       'gym_sessions',
+  ACTIVE:         'gym_active_session',
+  USER_NAME:      'gym_user_name',
+  UNITS:          'gym_units',
+  EXERCISES:      'gym_exercises',
+  SESSION_PREFS:  'gym_session_prefs',
+  REPORTS_PREFS:  'gym_reports_prefs',
 };
 
 const DEFAULT_UNITS         = { weight: 'kg', distance: 'km' };
 const DEFAULT_SESSION_PREFS = { exerciseHistory: 'last' };
 // exerciseHistory: 'last' | 'pr' | 'none'
+const DEFAULT_REPORTS_PREFS = { showPRMarkers: true };
 
 const COLOR_PRESETS = [
   '#6366f1','#ef4444','#f97316','#eab308',
@@ -152,6 +154,13 @@ const Storage = {
   },
   saveSessionPrefs(prefs) {
     localStorage.setItem(STORAGE_KEYS.SESSION_PREFS, JSON.stringify(prefs));
+  },
+  getReportsPrefs() {
+    const raw = localStorage.getItem(STORAGE_KEYS.REPORTS_PREFS);
+    return raw ? JSON.parse(raw) : { ...DEFAULT_REPORTS_PREFS };
+  },
+  saveReportsPrefs(prefs) {
+    localStorage.setItem(STORAGE_KEYS.REPORTS_PREFS, JSON.stringify(prefs));
   },
 
   deleteSession(id) {
@@ -417,7 +426,7 @@ function migrateExercises(existing) {
 
 // ─── Router ───────────────────────────────────────────────────
 // Sub-views that live under the Settings tab
-const SETTINGS_SUB_VIEWS = new Set(['units', 'data', 'about', 'sessions-settings']);
+const SETTINGS_SUB_VIEWS = new Set(['units', 'data', 'about', 'sessions-settings', 'reports-settings']);
 
 function navigate(viewName) {
   document.querySelectorAll('.view').forEach(v => v.classList.remove('view--active'));
@@ -434,6 +443,7 @@ function navigate(viewName) {
     home: renderHome, exercises: renderExercises, reports: renderReports,
     settings: renderSettings, units: renderUnits, data: renderData, about: renderAbout,
     'sessions-settings': renderSessionPrefs,
+    'reports-settings':  renderReportsPrefs,
   };
   if (renderers[viewName]) renderers[viewName]();
 }
@@ -808,7 +818,10 @@ function renderSessionsList(allSessions) {
         <h3>${session.sessionTypeName}</h3>
         ${session.manuallyEdited ? `<span class="session-edited-badge">✏️ Edited</span>` : ''}
         <p>${secondary}</p>
-        ${session.notes ? `<button class="btn-view-notes" data-id="${session.id}">📝 Notes</button>` : ''}
+        ${session.notes
+          ? `<button class="btn-view-notes" data-id="${session.id}">📝 Notes</button>`
+          : `<button class="btn-add-note"   data-id="${session.id}">+ Add Note</button>`
+        }
       </div>
       <div class="session-duration">
         <div class="session-duration-value">${formatDuration(session.durationSeconds)}</div>
@@ -840,6 +853,10 @@ function renderSessionsList(allSessions) {
     btn.addEventListener('click', () => showNotesModal(btn.dataset.id));
   });
 
+  list.querySelectorAll('.btn-add-note').forEach(btn => {
+    btn.addEventListener('click', () => showNotesModal(btn.dataset.id, true));
+  });
+
   list.querySelectorAll('.session-edit-btn').forEach(btn => {
     btn.addEventListener('click', () => openEditSessionModal(btn.dataset.id));
   });
@@ -867,22 +884,56 @@ function renderSessionsList(allSessions) {
   });
 }
 
+/** Returns the numeric PR value for a set (used to detect if a set equals the all-time best). */
+function setComparableValue(set, exerciseType) {
+  if (exerciseType === 'strength') {
+    return set.weight ?? -1;
+  }
+  if (set.distance != null) return set.distance;
+  if (set.duration) {
+    const [m, s] = set.duration.split(':').map(Number);
+    return m * 60 + (s || 0);
+  }
+  return -1;
+}
+
+/** Returns the highest comparable value across ALL sessions for an exercise. */
+function getPRValueForExercise(exerciseId, exerciseType) {
+  const sessions = Storage.getSessions();
+  let best = -Infinity;
+  for (const session of sessions) {
+    const ex = (session.exercises || []).find(e => e.exerciseId === exerciseId);
+    if (!ex) continue;
+    for (const set of (ex.sets || [])) {
+      const v = setComparableValue(set, exerciseType);
+      if (v > best) best = v;
+    }
+  }
+  return best;
+}
+
 function renderExerciseSummaryDetail(session, detailEl) {
-  const exercises = session.exercises || [];
-  detailEl.innerHTML = exercises.map(ex => `
+  const exercises  = session.exercises || [];
+  const showPR     = Storage.getReportsPrefs().showPRMarkers;
+  detailEl.innerHTML = exercises.map(ex => {
+    const prValue = showPR ? getPRValueForExercise(ex.exerciseId, ex.exerciseType) : -Infinity;
+    return `
     <div class="report-exercise-block">
       <div class="report-exercise-name">
         ${ex.exerciseName}
         <span class="exercise-type-badge exercise-type-badge--${ex.exerciseType}" style="margin-left:6px">${ex.exerciseType === 'strength' ? 'Strength' : 'Cardio'}</span>
       </div>
-      ${ex.sets.map((set, i) => `
-        <div class="report-set-row">
+      ${ex.sets.map((set, i) => {
+        const isPR = showPR && prValue > -Infinity && setComparableValue(set, ex.exerciseType) === prValue;
+        return `
+        <div class="report-set-row${isPR ? ' report-set-row--pr' : ''}">
           <span class="report-set-number">Set ${i + 1}</span>
           <span>${formatSetValues(set, ex.exerciseType)}</span>
-        </div>
-      `).join('')}
-    </div>
-  `).join('');
+          ${isPR ? `<span class="report-pr-badge" title="Personal Record">🏆 PR</span>` : ''}
+        </div>`;
+      }).join('')}
+    </div>`;
+  }).join('');
 }
 
 // ─── Render: Settings ────────────────────────────────────────
@@ -905,6 +956,12 @@ function renderSessionPrefs() {
   document.getElementById('eh-last').checked = prefs.exerciseHistory === 'last';
   document.getElementById('eh-pr').checked   = prefs.exerciseHistory === 'pr';
   document.getElementById('eh-none').checked = prefs.exerciseHistory === 'none';
+}
+
+// ─── Render: Reports Preferences ─────────────────────────────
+function renderReportsPrefs() {
+  const prefs = Storage.getReportsPrefs();
+  document.getElementById('rp-pr-markers').checked = prefs.showPRMarkers !== false;
 }
 
 // ─── Render: Data ────────────────────────────────────────────
@@ -1301,7 +1358,13 @@ function handleWeightModeToggle() {
   const units = Storage.getUnits();
   applyWeightMode(mode, units.weight);
   if (state.logSetExerciseId) {
-    Storage.setExerciseWeightMode(state.logSetExerciseId, mode);
+    if (state.editingMode === 'history') {
+      // Update the in-memory copy, not the active session
+      const editEx = (state.editingSession?.exercises || []).find(e => e.exerciseId === state.logSetExerciseId);
+      if (editEx) editEx.weightMode = mode;
+    } else {
+      Storage.setExerciseWeightMode(state.logSetExerciseId, mode);
+    }
   }
 }
 
@@ -1429,12 +1492,19 @@ function handleLogSet() {
     }
     const weightVal    = document.getElementById('set-weight').value;
     const baseWeightVal= document.getElementById('set-base-weight').value;
-    const activeEx     = ((Storage.getActive() || {}).exercises || []).find(e => e.exerciseId === exerciseId);
-    const weightMode   = activeEx?.weightMode || 'weight';
+    // Read weight mode from the correct source depending on edit context
+    const sourceExForMode = state.editingMode === 'history'
+      ? (state.editingSession?.exercises || []).find(e => e.exerciseId === exerciseId)
+      : ((Storage.getActive() || {}).exercises || []).find(e => e.exerciseId === exerciseId);
+    const weightMode   = sourceExForMode?.weightMode || 'weight';
     const baseWeightNum= ex.trackWeight && baseWeightVal !== '' ? parseFloat(baseWeightVal) : null;
-    // Persist the base weight so it pre-fills for subsequent sets
+    // Persist base weight to the correct source
     if (ex.trackWeight) {
-      Storage.setExerciseBaseWeight(exerciseId, baseWeightNum);
+      if (state.editingMode === 'history') {
+        if (sourceExForMode) sourceExForMode.baseWeight = baseWeightNum;
+      } else {
+        Storage.setExerciseBaseWeight(exerciseId, baseWeightNum);
+      }
     }
     set = {
       reps,
@@ -1689,7 +1759,7 @@ function handleSaveNote() {
   if (!id) return;
   Storage.updateSessionNotes(id, notes);
   renderSessionsList(Storage.getSessions());
-  showNotesModal(id, false);
+  closeNotesModal();
 }
 
 function handleDeleteNote(sessionId) {
@@ -2344,6 +2414,13 @@ function wireEvents() {
   document.getElementById('btn-back-data').addEventListener('click',  () => navigate('settings'));
   document.getElementById('btn-back-about').addEventListener('click', () => navigate('settings'));
   document.getElementById('btn-back-sessions-settings').addEventListener('click', () => navigate('settings'));
+  document.getElementById('btn-back-reports-settings').addEventListener('click', () => navigate('settings'));
+
+  document.getElementById('rp-pr-markers').addEventListener('change', e => {
+    const prefs = Storage.getReportsPrefs();
+    prefs.showPRMarkers = e.target.checked;
+    Storage.saveReportsPrefs(prefs);
+  });
 
   document.querySelectorAll('input[name="exercise-history"]').forEach(radio => {
     radio.addEventListener('change', () => {
