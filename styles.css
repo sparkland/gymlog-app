@@ -690,9 +690,6 @@ body {
 .session-history-info h3 {
   font-size: 0.9375rem;
   font-weight: 600;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
 }
 
 .session-history-info p {
