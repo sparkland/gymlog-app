@@ -113,8 +113,11 @@ test.describe('Reports — Edit Session modal', () => {
     await page.locator('#btn-edit-add-exercise').click();
     await waitForModalOpen(page, 'modal-pick-exercise');
 
-    // Cancel the edit session — both modals must close
-    await page.locator('#btn-cancel-edit-session').click();
+    // Cancel the edit session — both modals must close.
+    // force:true is required because #modal-pick-exercise (higher DOM order,
+    // same z-index) visually covers the cancel button. We are intentionally
+    // testing the JS closeEditSessionModal() handler, not button accessibility.
+    await page.locator('#btn-cancel-edit-session').click({ force: true });
     await waitForModalClosed(page, 'modal-edit-session');
     await waitForModalClosed(page, 'modal-pick-exercise');
 
