@@ -10,7 +10,7 @@
   <meta http-equiv="Pragma" content="no-cache">
   <meta http-equiv="Expires" content="0">
   <title>GymLog</title>
-  <link rel="stylesheet" href="styles.css?v=19">
+  <link rel="stylesheet" href="styles.css?v=20">
 </head>
 <body>
 
@@ -236,6 +236,14 @@
         </div>
         <span class="settings-row-chevron">›</span>
       </button>
+      <button class="settings-row" data-nav="reports-settings">
+        <span class="settings-row-icon">📊</span>
+        <div class="settings-row-info">
+          <h3>Reports</h3>
+          <p>PR markers and display preferences</p>
+        </div>
+        <span class="settings-row-chevron">›</span>
+      </button>
       <button class="settings-row" data-nav="units">
         <span class="settings-row-icon">⚖️</span>
         <div class="settings-row-info">
@@ -335,6 +343,30 @@
           </span>
           <input type="radio" name="exercise-history" value="none" id="eh-none">
           <span class="radio-custom"></span>
+        </label>
+      </div>
+    </div>
+  </div>
+
+  <!-- ═══════════════ REPORTS SETTINGS VIEW ═══════════════ -->
+  <div id="view-reports-settings" class="view">
+    <div class="view-header">
+      <button class="btn-back" id="btn-back-reports-settings">← Settings</button>
+      <h1>Reports</h1>
+      <p>Customise what you see in your training history</p>
+    </div>
+    <div class="settings-section">
+      <div class="settings-section-label">Personal Records</div>
+      <div class="settings-card">
+        <label class="toggle-row">
+          <span class="toggle-label">
+            Show PR markers
+            <span class="radio-row-sub">Highlight personal-record sets with a 🏆 PR badge when viewing exercise details in Reports</span>
+          </span>
+          <div class="toggle-switch">
+            <input type="checkbox" id="rp-pr-markers" checked>
+            <span class="toggle-thumb"></span>
+          </div>
         </label>
       </div>
     </div>
@@ -814,7 +846,7 @@
   <!-- Toast notification -->
   <div id="toast" class="toast" role="alert" aria-live="assertive"></div>
 
-  <script src="app.js?v=19"></script>
+  <script src="app.js?v=20"></script>
   <script>
     // Register service worker for network-first caching (requires HTTPS or localhost).
     // The SW never touches localStorage — all user data (sessions, name, units) is safe.
