@@ -1696,7 +1696,7 @@ function handleSaveNote() {
   if (!id) return;
   Storage.updateSessionNotes(id, notes);
   renderSessionsList(Storage.getSessions());
-  showNotesModal(id, false);
+  closeNotesModal();
 }
 
 function handleDeleteNote(sessionId) {
