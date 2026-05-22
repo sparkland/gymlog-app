@@ -2,20 +2,23 @@
 
 // ─── Constants ────────────────────────────────────────────────
 const STORAGE_KEYS = {
-  TYPES:          'gym_session_types',
-  SESSIONS:       'gym_sessions',
-  ACTIVE:         'gym_active_session',
-  USER_NAME:      'gym_user_name',
-  UNITS:          'gym_units',
-  EXERCISES:      'gym_exercises',
-  SESSION_PREFS:  'gym_session_prefs',
-  REPORTS_PREFS:  'gym_reports_prefs',
+  TYPES:            'gym_session_types',
+  SESSIONS:         'gym_sessions',
+  ACTIVE:           'gym_active_session',
+  USER_NAME:        'gym_user_name',
+  UNITS:            'gym_units',
+  EXERCISES:        'gym_exercises',
+  SESSION_PREFS:    'gym_session_prefs',
+  REPORTS_PREFS:    'gym_reports_prefs',
+  PLANS:            'gym_workout_plans',
+  WORKOUT_SETTINGS: 'gym_workout_settings',
 };
 
-const DEFAULT_UNITS         = { weight: 'kg', distance: 'km' };
-const DEFAULT_SESSION_PREFS = { exerciseHistory: 'last' };
+const DEFAULT_UNITS           = { weight: 'kg', distance: 'km' };
+const DEFAULT_SESSION_PREFS   = { exerciseHistory: ['last'] };
 // exerciseHistory: 'last' | 'pr' | 'none'
-const DEFAULT_REPORTS_PREFS = { showPRMarkers: true };
+const DEFAULT_REPORTS_PREFS   = { showPRMarkers: true };
+const DEFAULT_WORKOUT_SETTINGS = { autoLoadEnabled: true };
 
 const COLOR_PRESETS = [
   '#6366f1','#ef4444','#f97316','#eab308',
@@ -150,7 +153,13 @@ const Storage = {
   saveUnits(u) { localStorage.setItem(STORAGE_KEYS.UNITS, JSON.stringify(u)); },
   getSessionPrefs() {
     const raw = localStorage.getItem(STORAGE_KEYS.SESSION_PREFS);
-    return raw ? JSON.parse(raw) : { ...DEFAULT_SESSION_PREFS };
+    if (!raw) return { exerciseHistory: ['last'] };
+    const prefs = JSON.parse(raw);
+    // Migrate old single-string format to array
+    if (typeof prefs.exerciseHistory === 'string') {
+      prefs.exerciseHistory = prefs.exerciseHistory === 'none' ? [] : [prefs.exerciseHistory];
+    }
+    return prefs;
   },
   saveSessionPrefs(prefs) {
     localStorage.setItem(STORAGE_KEYS.SESSION_PREFS, JSON.stringify(prefs));
@@ -161,6 +170,48 @@ const Storage = {
   },
   saveReportsPrefs(prefs) {
     localStorage.setItem(STORAGE_KEYS.REPORTS_PREFS, JSON.stringify(prefs));
+  },
+  getWorkoutSettings() {
+    const raw = localStorage.getItem(STORAGE_KEYS.WORKOUT_SETTINGS);
+    return raw ? JSON.parse(raw) : { ...DEFAULT_WORKOUT_SETTINGS };
+  },
+  saveWorkoutSettings(settings) {
+    localStorage.setItem(STORAGE_KEYS.WORKOUT_SETTINGS, JSON.stringify(settings));
+  },
+  getPlans() {
+    const raw = localStorage.getItem(STORAGE_KEYS.PLANS);
+    return raw ? JSON.parse(raw) : [];
+  },
+  savePlans(arr) {
+    localStorage.setItem(STORAGE_KEYS.PLANS, JSON.stringify(arr));
+  },
+  addPlan(plan) {
+    const plans = Storage.getPlans();
+    plans.push(plan);
+    Storage.savePlans(plans);
+  },
+  updatePlan(id, planObj) {
+    const plans = Storage.getPlans();
+    const idx   = plans.findIndex(p => p.id === id);
+    if (idx === -1) return;
+    plans[idx] = planObj;
+    Storage.savePlans(plans);
+  },
+  deletePlan(id) {
+    Storage.savePlans(Storage.getPlans().filter(p => p.id !== id));
+  },
+  updateTypeWorkoutPlan(typeId, subtypeId, planId, autoLoad) {
+    const types = Storage.getTypes() || [];
+    const type  = types.find(t => t.id === typeId);
+    if (!type) return;
+    if (subtypeId) {
+      const sub = (type.subtypes || []).find(s => s.id === subtypeId);
+      if (sub) { sub.workoutPlanId = planId; sub.workoutPlanAutoLoad = autoLoad; }
+    } else {
+      type.workoutPlanId      = planId;
+      type.workoutPlanAutoLoad = autoLoad;
+    }
+    Storage.saveTypes(types);
   },
 
   deleteSession(id) {
@@ -258,15 +309,21 @@ const state = {
   expandedTypeId:      null,
   addSubtypeForTypeId: null,
   notesSessionId:      null,
-  exercisesSegment:   'session-types',
-  exerciseFilterType: 'all',
-  pickExerciseFilter:  'all',
+  exercisesSegment:        'session-types',
+  exerciseFilterType:      'all',
+  exerciseFilterUserAdded: false,
+  pickExerciseFilter:      'all',
   logSetExerciseId:    null,
   editingSessionId:    null,
   editingSession:      null,
   editingExerciseId:   null,
   editingSetIndex:     null,
-  editingMode:         'active',
+  editingMode:         'active', // 'active' | 'history' | 'plan'
+  editingPlanId:       null,     // null = new plan; string = existing plan id
+  editingPlan:         null,     // in-memory plan copy during add/edit
+  selectedPlanId:      null,     // plan chosen on Home before starting
+  assigningTypeId:     null,     // type/subtype being assigned a plan
+  assigningSubtypeId:  null,
 };
 
 // ─── Utility ──────────────────────────────────────────────────
@@ -426,7 +483,7 @@ function migrateExercises(existing) {
 
 // ─── Router ───────────────────────────────────────────────────
 // Sub-views that live under the Settings tab
-const SETTINGS_SUB_VIEWS = new Set(['units', 'data', 'about', 'sessions-settings', 'reports-settings']);
+const SETTINGS_SUB_VIEWS = new Set(['units', 'data', 'about', 'sessions-settings', 'reports-settings', 'workout-settings']);
 
 function navigate(viewName) {
   document.querySelectorAll('.view').forEach(v => v.classList.remove('view--active'));
@@ -444,6 +501,7 @@ function navigate(viewName) {
     settings: renderSettings, units: renderUnits, data: renderData, about: renderAbout,
     'sessions-settings': renderSessionPrefs,
     'reports-settings':  renderReportsPrefs,
+    'workout-settings':  renderWorkoutSettings,
   };
   if (renderers[viewName]) renderers[viewName]();
 }
@@ -487,6 +545,7 @@ function renderHome() {
 
   renderTypeGrid();
   renderSubtypePicker();
+  renderHomePlanSelector();
   updateStartButton();
 }
 
@@ -514,11 +573,13 @@ function renderTypeGrid() {
 function selectType(id) {
   const prev = state.selectedTypeId;
   state.selectedTypeId = prev === id ? null : id;
-  // Clear subtype whenever the type selection changes
+  // Clear subtype and plan selection whenever the type selection changes
   state.selectedSubtypeId   = null;
   state.selectedSubtypeName = null;
+  state.selectedPlanId      = null;
   renderTypeGrid();
   renderSubtypePicker();
+  renderHomePlanSelector();
   updateStartButton();
 }
 
@@ -647,15 +708,24 @@ function renderTypes() {
     const entry = document.createElement('div');
     entry.className = 'type-entry' + (isExpanded ? ' expanded' : '');
 
-    const subtypeRows = subtypes.map(st => `
+    const plans    = Storage.getPlans() || [];
+    const typePlan = plans.find(p => p.id === (type.workoutPlanId ?? null));
+
+    const subtypeRows = subtypes.map(st => {
+      const stPlan = plans.find(p => p.id === (st.workoutPlanId ?? null));
+      return `
       <div class="subtype-row">
         <span class="subtype-row-dot" style="background:${type.color}"></span>
-        <span class="subtype-row-name">${st.name}</span>
+        <div class="subtype-row-body">
+          <span class="subtype-row-name">${st.name}</span>
+          ${stPlan ? `<span class="plan-assigned-badge">📋 ${stPlan.name}</span>` : ''}
+        </div>
+        <button class="btn-assign-plan" data-type-id="${type.id}" data-subtype-id="${st.id}" title="Assign workout plan">📋</button>
         ${!st.isDefault
           ? `<button class="subtype-delete-btn" data-type-id="${type.id}" data-id="${st.id}" title="Delete subtype">✕</button>`
           : ''}
       </div>
-    `).join('');
+    `; }).join('');
 
     entry.innerHTML = `
       <div class="type-list-item" data-toggle="${type.id}">
@@ -664,8 +734,10 @@ function renderTypes() {
         <div class="type-list-info">
           <h3>${type.name}</h3>
           <span>${type.isDefault ? 'Default' : 'Custom'}${count > 0 ? ` · ${count} subtype${count > 1 ? 's' : ''}` : ''}</span>
+          ${typePlan ? `<span class="plan-assigned-badge">📋 ${typePlan.name}</span>` : ''}
         </div>
         <div class="type-list-actions">
+          <button class="btn-assign-plan" data-type-id="${type.id}" data-subtype-id="" title="Assign workout plan">📋</button>
           ${!type.isDefault ? `<button class="type-delete-btn" data-id="${type.id}" title="Delete type">✕</button>` : ''}
           <div class="type-expand-chevron ${isExpanded ? 'expanded' : ''}">${chevronSVG}</div>
         </div>
@@ -684,9 +756,17 @@ function renderTypes() {
   list.querySelectorAll('[data-toggle]').forEach(row => {
     row.addEventListener('click', e => {
       if (e.target.closest('.type-delete-btn')) return;
+      if (e.target.closest('.btn-assign-plan')) return;
       const id = row.dataset.toggle;
       state.expandedTypeId = state.expandedTypeId === id ? null : id;
       renderTypes();
+    });
+  });
+
+  list.querySelectorAll('.btn-assign-plan').forEach(btn => {
+    btn.addEventListener('click', e => {
+      e.stopPropagation();
+      openAssignPlanModal(btn.dataset.typeId, btn.dataset.subtypeId || null);
     });
   });
 
@@ -823,12 +903,14 @@ function renderSessionsList(allSessions) {
           : `<button class="btn-add-note"   data-id="${session.id}">+ Add Note</button>`
         }
       </div>
-      <div class="session-duration">
-        <div class="session-duration-value">${formatDuration(session.durationSeconds)}</div>
-        <div class="session-duration-label">duration</div>
+      <div class="session-card-right">
+        <div class="session-duration">
+          <div class="session-duration-value">${formatDuration(session.durationSeconds)}</div>
+          <div class="session-duration-label">duration</div>
+        </div>
+        <button class="session-edit-btn"   data-id="${session.id}" title="Edit session">✏️</button>
+        <button class="session-delete-btn" data-id="${session.id}" title="Delete session">✕</button>
       </div>
-      <button class="session-edit-btn"   data-id="${session.id}" title="Edit session">✏️</button>
-      <button class="session-delete-btn" data-id="${session.id}" title="Delete session">✕</button>
     `;
 
     list.appendChild(card);
@@ -981,10 +1063,10 @@ function renderUnits() {
 
 // ─── Render: Session Preferences ─────────────────────────────
 function renderSessionPrefs() {
-  const prefs = Storage.getSessionPrefs();
-  document.getElementById('eh-last').checked = prefs.exerciseHistory === 'last';
-  document.getElementById('eh-pr').checked   = prefs.exerciseHistory === 'pr';
-  document.getElementById('eh-none').checked = prefs.exerciseHistory === 'none';
+  const history = Storage.getSessionPrefs().exerciseHistory || [];
+  document.getElementById('eh-last').checked = history.includes('last');
+  document.getElementById('eh-pr').checked   = history.includes('pr');
+  document.getElementById('eh-none').checked = history.length === 0;
 }
 
 // ─── Render: Reports Preferences ─────────────────────────────
@@ -1003,6 +1085,253 @@ function renderAbout() {
   // Static view — no dynamic content needed
 }
 
+// ─── Render: Workout Settings ────────────────────────────────
+function renderWorkoutSettings() {
+  const s = Storage.getWorkoutSettings();
+  document.getElementById('workout-autoload-toggle').checked = s.autoLoadEnabled;
+}
+
+// ─── Render: Workout Plans List ──────────────────────────────
+function renderWorkoutPlansList() {
+  const container = document.getElementById('workout-plans-list');
+  const plans     = Storage.getPlans() || [];
+  container.innerHTML = '';
+
+  if (plans.length === 0) {
+    container.innerHTML = `<div class="empty-state"><div class="empty-state-icon">📋</div><h3>No Workout Plans</h3><p>Create a plan to quickly load exercises into a session.</p></div>`;
+    return;
+  }
+
+  plans.forEach(plan => {
+    const card = document.createElement('div');
+    card.className = 'workout-plan-card';
+    const count = (plan.exercises || []).length;
+    card.innerHTML = `
+      <span class="workout-plan-card-emoji">${plan.emoji || '📋'}</span>
+      <div class="workout-plan-card-info">
+        <div class="workout-plan-card-name">${plan.name}</div>
+        <div class="workout-plan-card-meta">${count} exercise${count !== 1 ? 's' : ''}</div>
+      </div>
+      <button class="btn-assign-plan" data-plan-id="${plan.id}" title="Edit plan">✏️</button>
+      <button class="exercise-delete-btn plan-delete-btn" data-plan-id="${plan.id}" title="Delete plan">✕</button>
+    `;
+    container.appendChild(card);
+  });
+
+  container.querySelectorAll('.btn-assign-plan[data-plan-id]').forEach(btn => {
+    btn.addEventListener('click', () => openEditPlanModal(btn.dataset.planId));
+  });
+  container.querySelectorAll('.plan-delete-btn').forEach(btn => {
+    btn.addEventListener('click', () => handleDeletePlan(btn.dataset.planId));
+  });
+}
+
+function handleDeletePlan(id) {
+  const plan = (Storage.getPlans() || []).find(p => p.id === id);
+  if (!plan) return;
+  if (!confirm(`Delete "${plan.name}"? This won't affect past sessions.`)) return;
+  Storage.deletePlan(id);
+  renderWorkoutPlansList();
+}
+
+// ─── Plan Modal ───────────────────────────────────────────────
+function openAddPlanModal() {
+  state.editingPlanId = null;
+  state.editingPlan   = { name: '', emoji: '', exercises: [] };
+  state.editingMode   = 'plan';
+  document.getElementById('plan-modal-title').textContent = 'New Workout Plan';
+  document.getElementById('plan-name').value  = '';
+  document.getElementById('plan-emoji').value = '';
+  renderPlanExercises();
+  document.getElementById('modal-add-edit-plan').classList.add('open');
+  document.getElementById('modal-backdrop').classList.add('open');
+  setTimeout(() => document.getElementById('plan-name').focus(), 300);
+}
+
+function openEditPlanModal(planId) {
+  const plan = (Storage.getPlans() || []).find(p => p.id === planId);
+  if (!plan) return;
+  state.editingPlanId = planId;
+  state.editingPlan   = JSON.parse(JSON.stringify(plan));
+  state.editingMode   = 'plan';
+  document.getElementById('plan-modal-title').textContent = 'Edit Workout Plan';
+  document.getElementById('plan-name').value  = plan.name;
+  document.getElementById('plan-emoji').value = plan.emoji || '💪';
+  renderPlanExercises();
+  document.getElementById('modal-add-edit-plan').classList.add('open');
+  document.getElementById('modal-backdrop').classList.add('open');
+}
+
+function closePlanModal() {
+  document.getElementById('modal-add-edit-plan').classList.remove('open');
+  document.getElementById('modal-backdrop').classList.remove('open');
+  state.editingPlanId = null;
+  state.editingPlan   = null;
+  state.editingMode   = 'active';
+}
+
+function renderPlanExercises() {
+  const container = document.getElementById('plan-exercises-list');
+  const exercises = state.editingPlan?.exercises || [];
+  if (exercises.length === 0) {
+    container.innerHTML = `<p class="exercise-empty-hint">No exercises added yet.</p>`;
+    return;
+  }
+  container.innerHTML = exercises.map((ex, i) => `
+    <div class="edit-set-row">
+      <span class="active-exercise-card-name" style="flex:1">${ex.exerciseName}</span>
+      <span class="exercise-type-badge exercise-type-badge--${ex.exerciseType}">${ex.exerciseType === 'strength' ? 'Strength' : 'Cardio'}</span>
+      <button class="btn-delete-set btn-plan-remove-ex" data-index="${i}" title="Remove">✕</button>
+    </div>
+  `).join('');
+
+  container.querySelectorAll('.btn-plan-remove-ex').forEach(btn => {
+    btn.addEventListener('click', () => {
+      state.editingPlan.exercises.splice(parseInt(btn.dataset.index, 10), 1);
+      renderPlanExercises();
+    });
+  });
+}
+
+function handleSavePlan() {
+  const name  = document.getElementById('plan-name').value.trim();
+  const emoji = document.getElementById('plan-emoji').value.trim() || '💪';
+  if (!name) { showToast('Please enter a plan name'); return; }
+
+  const plan = {
+    id:        state.editingPlanId || `plan-${Date.now()}`,
+    name,
+    emoji,
+    exercises: state.editingPlan?.exercises || [],
+  };
+
+  if (state.editingPlanId) {
+    Storage.updatePlan(state.editingPlanId, plan);
+  } else {
+    Storage.addPlan(plan);
+  }
+  closePlanModal();
+  renderWorkoutPlansList();
+}
+
+// ─── Assign Plan Modal ────────────────────────────────────────
+function openAssignPlanModal(typeId, subtypeId) {
+  const plans = Storage.getPlans() || [];
+  if (plans.length === 0) {
+    showToast('Create a Workout Plan first');
+    return;
+  }
+  state.assigningTypeId    = typeId;
+  state.assigningSubtypeId = subtypeId || null;
+
+  const types   = Storage.getTypes() || [];
+  const type    = types.find(t => t.id === typeId);
+  const subtype = subtypeId ? (type?.subtypes || []).find(s => s.id === subtypeId) : null;
+  const target  = subtype || type;
+
+  const subtitle = subtype ? `${type?.name} › ${subtype.name}` : type?.name;
+  document.getElementById('assign-plan-subtitle').textContent = subtitle || '';
+
+  // Populate select
+  const sel = document.getElementById('assign-plan-select');
+  sel.innerHTML = `<option value="">None (remove assignment)</option>` +
+    plans.map(p => `<option value="${p.id}">${p.emoji || '📋'} ${p.name}</option>`).join('');
+  sel.value = target?.workoutPlanId || '';
+
+  document.getElementById('assign-plan-autoload').checked =
+    target?.workoutPlanAutoLoad !== false;
+
+  document.getElementById('modal-assign-plan').classList.add('open');
+  document.getElementById('modal-backdrop').classList.add('open');
+}
+
+function closeAssignPlanModal() {
+  document.getElementById('modal-assign-plan').classList.remove('open');
+  document.getElementById('modal-backdrop').classList.remove('open');
+  state.assigningTypeId    = null;
+  state.assigningSubtypeId = null;
+}
+
+function handleSaveAssignment() {
+  const planId   = document.getElementById('assign-plan-select').value || null;
+  const autoLoad = document.getElementById('assign-plan-autoload').checked;
+  Storage.updateTypeWorkoutPlan(state.assigningTypeId, state.assigningSubtypeId, planId, autoLoad);
+  closeAssignPlanModal();
+  renderTypes();
+}
+
+// ─── Plan: Add to Session ─────────────────────────────────────
+function addPlanExercisesToSession(planId) {
+  const plan = (Storage.getPlans() || []).find(p => p.id === planId);
+  if (!plan) return;
+  const active      = Storage.getActive();
+  const existingIds = new Set((active?.exercises || []).map(e => e.exerciseId));
+  (plan.exercises || []).forEach(pe => {
+    if (existingIds.has(pe.exerciseId)) return;
+    Storage.addExerciseToActive({
+      exerciseId:    pe.exerciseId,
+      exerciseName:  pe.exerciseName,
+      exerciseType:  pe.exerciseType,
+      sets:          [],
+      weightMode:    'weight',
+      baseWeight:    null,
+    });
+    existingIds.add(pe.exerciseId);
+  });
+}
+
+// ─── Home: Plan Selector ──────────────────────────────────────
+function renderHomePlanSelector() {
+  const section = document.getElementById('home-plan-section');
+  const plans   = Storage.getPlans() || [];
+  if (plans.length === 0) {
+    section.style.display = 'none';
+    state.selectedPlanId  = null;
+    return;
+  }
+  section.style.display = '';
+  const sel = document.getElementById('home-plan-select');
+  sel.innerHTML = `<option value="">None</option>` +
+    plans.map(p => `<option value="${p.id}">${p.emoji || '📋'} ${p.name}</option>`).join('');
+  sel.value = state.selectedPlanId || '';
+}
+
+// ─── Session: Load Plan Modal ─────────────────────────────────
+function openLoadPlanModal() {
+  const plans = Storage.getPlans() || [];
+  const list  = document.getElementById('load-plan-list');
+  if (plans.length === 0) {
+    showToast('No Workout Plans found. Create one in Exercises → Plans.');
+    return;
+  }
+  list.innerHTML = '';
+  plans.forEach(plan => {
+    const row = document.createElement('div');
+    row.className = 'load-plan-row';
+    const count = (plan.exercises || []).length;
+    row.innerHTML = `
+      <span class="workout-plan-card-emoji">${plan.emoji || '📋'}</span>
+      <div class="workout-plan-card-info">
+        <div class="workout-plan-card-name">${plan.name}</div>
+        <div class="workout-plan-card-meta">${count} exercise${count !== 1 ? 's' : ''}</div>
+      </div>
+    `;
+    row.addEventListener('click', () => {
+      addPlanExercisesToSession(plan.id);
+      closeLoadPlanModal();
+      renderActiveSessionExercises();
+    });
+    list.appendChild(row);
+  });
+  document.getElementById('modal-load-plan').classList.add('open');
+  document.getElementById('modal-backdrop').classList.add('open');
+}
+
+function closeLoadPlanModal() {
+  document.getElementById('modal-load-plan').classList.remove('open');
+  document.getElementById('modal-backdrop').classList.remove('open');
+}
+
 // ─── Render: Exercises Tab ────────────────────────────────────
 function renderExercises() {
   // Sync segment buttons
@@ -1012,12 +1341,17 @@ function renderExercises() {
   // Show/hide panels
   const typesPanel = document.getElementById('panel-session-types');
   const exPanel    = document.getElementById('panel-exercises-library');
+  const plansPanel = document.getElementById('panel-workout-plans');
+  typesPanel.classList.add('segment-panel--hidden');
+  exPanel.classList.add('segment-panel--hidden');
+  plansPanel.classList.add('segment-panel--hidden');
   if (state.exercisesSegment === 'session-types') {
     typesPanel.classList.remove('segment-panel--hidden');
-    exPanel.classList.add('segment-panel--hidden');
     renderTypes();
+  } else if (state.exercisesSegment === 'workout-plans') {
+    plansPanel.classList.remove('segment-panel--hidden');
+    renderWorkoutPlansList();
   } else {
-    typesPanel.classList.add('segment-panel--hidden');
     exPanel.classList.remove('segment-panel--hidden');
     renderExercisesList();
   }
@@ -1026,13 +1360,18 @@ function renderExercises() {
 function renderExercisesList() {
   const list      = document.getElementById('exercises-list');
   const exercises = (Storage.getExercises() || []).filter(ex => {
-    if (state.exerciseFilterType === 'all') return true;
-    return ex.type === state.exerciseFilterType;
+    if (state.exerciseFilterType !== 'all' && ex.type !== state.exerciseFilterType) return false;
+    if (state.exerciseFilterUserAdded && ex.isDefault) return false;
+    return true;
   });
 
-  // Sync filter pills
+  // Sync filter pills — type pills and user-added pill are independent
   document.querySelectorAll('#exercise-filter-pills .filter-pill').forEach(pill => {
-    pill.classList.toggle('filter-pill--active', pill.dataset.filter === state.exerciseFilterType);
+    if (pill.dataset.filter === 'user-added') {
+      pill.classList.toggle('filter-pill--active', state.exerciseFilterUserAdded);
+    } else {
+      pill.classList.toggle('filter-pill--active', pill.dataset.filter === state.exerciseFilterType);
+    }
   });
 
   list.innerHTML = '';
@@ -1118,18 +1457,56 @@ function getPRForExercise(exerciseId) {
 
 /** Returns an HTML string for the exercise history hint row, or '' if not shown. */
 function buildExerciseHistoryHint(exerciseId) {
-  const prefs = Storage.getSessionPrefs();
-  if (prefs.exerciseHistory === 'none') return '';
-  const result = prefs.exerciseHistory === 'pr'
-    ? getPRForExercise(exerciseId)
-    : getLastSetForExercise(exerciseId);
+  const history  = Storage.getSessionPrefs().exerciseHistory || [];
+  const showLast = history.includes('last');
+  const showPR   = history.includes('pr');
+  if (!showLast && !showPR) return '';
+
+  if (showLast && showPR) {
+    const lastResult = getLastSetForExercise(exerciseId);
+    const prResult   = getPRForExercise(exerciseId);
+    if (!lastResult && !prResult) return '';
+
+    if (lastResult && prResult) {
+      const lastVal = formatSetValues(lastResult.set, lastResult.exerciseType);
+      const prVal   = formatSetValues(prResult.set,  prResult.exerciseType);
+      if (lastVal === prVal) {
+        // Same set — single combined row with both icons, "Last session" wording
+        return `
+    <div class="exercise-history-hint">
+      <span class="exercise-history-hint-label">🏆🕐 Last session</span>
+      <span class="exercise-history-hint-value">${lastVal}</span>
+    </div>`;
+      }
+      // Different — two rows (PR first, last session second)
+      return `
+    <div class="exercise-history-hint">
+      <span class="exercise-history-hint-label">🏆 Personal Record</span>
+      <span class="exercise-history-hint-value">${prVal}</span>
+    </div>
+    <div class="exercise-history-hint">
+      <span class="exercise-history-hint-label">🕐 Last session</span>
+      <span class="exercise-history-hint-value">${lastVal}</span>
+    </div>`;
+    }
+    // Only one returned a result — show whichever is available
+    const only  = prResult || lastResult;
+    const label = prResult ? '🏆 Personal Record' : '🕐 Last session';
+    return `
+    <div class="exercise-history-hint">
+      <span class="exercise-history-hint-label">${label}</span>
+      <span class="exercise-history-hint-value">${formatSetValues(only.set, only.exerciseType)}</span>
+    </div>`;
+  }
+
+  // Single mode — only one option selected
+  const result = showPR ? getPRForExercise(exerciseId) : getLastSetForExercise(exerciseId);
   if (!result) return '';
-  const label = prefs.exerciseHistory === 'pr' ? '🏆 Personal Record' : '🕐 Last session';
-  const value = formatSetValues(result.set, result.exerciseType);
+  const label  = showPR ? '🏆 Personal Record' : '🕐 Last session';
   return `
     <div class="exercise-history-hint">
       <span class="exercise-history-hint-label">${label}</span>
-      <span class="exercise-history-hint-value">${value}</span>
+      <span class="exercise-history-hint-value">${formatSetValues(result.set, result.exerciseType)}</span>
     </div>`;
 }
 
@@ -1249,25 +1626,37 @@ function openPickExerciseModal() {
 
 function closePickExerciseModal() {
   document.getElementById('modal-pick-exercise').classList.remove('open');
-  // Only close backdrop if edit session modal is not open
-  if (!document.getElementById('modal-edit-session').classList.contains('open')) {
+  // Only close backdrop if no parent modal is open
+  const editOpen = document.getElementById('modal-edit-session').classList.contains('open');
+  const planOpen = document.getElementById('modal-add-edit-plan').classList.contains('open');
+  if (!editOpen && !planOpen) {
     document.getElementById('modal-backdrop').classList.remove('open');
   }
+}
+
+// Closes the exercise picker when triggered from within the plan modal
+function closePlanPickExercise() {
+  closePickExerciseModal();
+  state.editingMode = 'plan'; // ensure mode stays in plan after close
 }
 
 function renderPickExerciseList() {
   const listEl = document.getElementById('pick-exercise-list');
 
-  // Build set of exercise IDs already added (active session or editing session)
-  // When swapping we don't exclude the exercise being swapped
-  const sessionExercises = state.editingMode === 'history'
-    ? (state.editingSession?.exercises || [])
-    : ((Storage.getActive() || {}).exercises || []);
-  const existingIds = new Set(
-    sessionExercises
-      .filter(e => e.exerciseId !== state.editingExerciseId)  // allow swap target
-      .map(e => e.exerciseId)
-  );
+  // Build set of exercise IDs already added (active session, editing session, or plan)
+  let existingIds;
+  if (state.editingMode === 'plan') {
+    existingIds = new Set((state.editingPlan?.exercises || []).map(e => e.exerciseId));
+  } else {
+    const sessionExercises = state.editingMode === 'history'
+      ? (state.editingSession?.exercises || [])
+      : ((Storage.getActive() || {}).exercises || []);
+    existingIds = new Set(
+      sessionExercises
+        .filter(e => e.exerciseId !== state.editingExerciseId)  // allow swap target
+        .map(e => e.exerciseId)
+    );
+  }
 
   const exercises = (Storage.getExercises() || []).filter(ex => {
     if (existingIds.has(ex.id)) return false;
@@ -1309,6 +1698,21 @@ function handleRemoveExercise(exerciseId, setCount) {
 }
 
 function handlePickExercise(exercise) {
+  if (state.editingMode === 'plan') {
+    if (state.editingPlan) {
+      const alreadyIn = state.editingPlan.exercises.some(e => e.exerciseId === exercise.id);
+      if (!alreadyIn) {
+        state.editingPlan.exercises.push({
+          exerciseId:   exercise.id,
+          exerciseName: exercise.name,
+          exerciseType: exercise.type,
+        });
+      }
+      closePlanPickExercise();
+      renderPlanExercises();
+    }
+    return;
+  }
   if (state.editingMode === 'history') {
     if (state.editingSession) {
       if (state.editingExerciseId) {
@@ -1594,6 +1998,24 @@ function handleStartSession() {
     startTimestamp: Date.now(),
     exercises: [],
   });
+
+  // Auto-load assigned plan (subtype takes priority over type)
+  const workoutSettings = Storage.getWorkoutSettings();
+  if (workoutSettings.autoLoadEnabled) {
+    const subtype = state.selectedSubtypeId
+      ? (type.subtypes || []).find(s => s.id === state.selectedSubtypeId)
+      : null;
+    const assignee = (subtype?.workoutPlanId) ? subtype : type;
+    if (assignee?.workoutPlanId && assignee?.workoutPlanAutoLoad !== false) {
+      addPlanExercisesToSession(assignee.workoutPlanId);
+    }
+  }
+
+  // Load any plan manually chosen on the Home screen
+  if (state.selectedPlanId) {
+    addPlanExercisesToSession(state.selectedPlanId);
+    state.selectedPlanId = null;
+  }
 
   document.getElementById('bottom-nav').classList.add('hidden');
   navigate('session');
@@ -2162,10 +2584,11 @@ function formatSetForPDF(set, type) {
 }
 
 function exportPDF() {
-  const sessions  = Storage.getSessions().slice().sort((a, b) =>
+  const sessions     = Storage.getSessions().slice().sort((a, b) =>
     b.date.localeCompare(a.date) || b.startTime.localeCompare(a.startTime));
-  const userName  = Storage.getUserName();
-  const totalSecs = sessions.reduce((sum, s) => sum + s.durationSeconds, 0);
+  const userName     = Storage.getUserName();
+  const showPRInPDF  = Storage.getReportsPrefs().showPRMarkers;
+  const totalSecs    = sessions.reduce((sum, s) => sum + s.durationSeconds, 0);
   const exportDate = new Intl.DateTimeFormat('en-GB', {
     day: 'numeric', month: 'long', year: 'numeric',
   }).format(new Date());
@@ -2185,20 +2608,37 @@ function exportPDF() {
         const exList = s.exercises || [];
         const exercisesHtml = exList.length === 0 ? '' : `
           <div style="margin-top:12px;border-top:1px solid rgba(255,255,255,0.08);padding-top:10px">
-            ${exList.map(ex => `
+            ${exList.map(ex => {
+              const bestScore = showPRInPDF ? getBestPRScore(ex.exerciseId, ex.exerciseType) : null;
+              let prAwarded = false;
+              return `
               <div style="margin-bottom:10px">
                 <div style="font-size:0.8125rem;font-weight:600;color:#cbd5e1;margin-bottom:4px">
                   ${ex.exerciseName}
                   <span style="color:#94a3b8;font-weight:400;font-size:0.75rem">(${ex.exerciseType})</span>
                 </div>
                 <table style="width:100%;border-collapse:collapse">
-                  ${ex.sets.map((set, i) => `
+                  ${ex.sets.map((set, i) => {
+                    let isPR = false;
+                    if (showPRInPDF && bestScore && bestScore.primary > -Infinity && !prAwarded) {
+                      const score = getSetPRScore(set, ex.exerciseType);
+                      if (score.primary === bestScore.primary && score.secondary === bestScore.secondary) {
+                        isPR = true;
+                        prAwarded = true;
+                      }
+                    }
+                    const prBadge = isPR
+                      ? `<span style="display:inline-block;font-size:0.6875rem;font-weight:700;color:#f59e0b;background:rgba(245,158,11,0.15);border:1px solid rgba(245,158,11,0.35);border-radius:4px;padding:1px 6px;margin-left:8px;white-space:nowrap">🏆 PR</span>`
+                      : '';
+                    return `
                     <tr>
                       <td style="font-size:0.75rem;color:#64748b;padding:2px 10px 2px 0;white-space:nowrap">Set ${i+1}</td>
-                      <td style="font-size:0.75rem;color:#94a3b8">${formatSetForPDF(set, ex.exerciseType)}</td>
-                    </tr>`).join('')}
+                      <td style="font-size:0.75rem;color:${isPR ? '#f1f5f9' : '#94a3b8'}">${formatSetForPDF(set, ex.exerciseType)}${prBadge}</td>
+                    </tr>`;
+                  }).join('')}
                 </table>
-              </div>`).join('')}
+              </div>`;
+            }).join('')}
           </div>`;
         return `
           <div style="background:#1e293b;border-radius:14px;padding:16px 20px;margin-bottom:12px;display:flex;align-items:flex-start;gap:16px">
@@ -2393,6 +2833,9 @@ function wireEvents() {
     closePickExerciseModal();
     closeLogSetModal();
     closeEditSessionModal();
+    closePlanModal();
+    closeAssignPlanModal();
+    closeLoadPlanModal();
   });
 
   document.getElementById('btn-open-export').addEventListener('click', openExportModal);
@@ -2438,6 +2881,7 @@ function wireEvents() {
   document.getElementById('btn-back-about').addEventListener('click', () => navigate('settings'));
   document.getElementById('btn-back-sessions-settings').addEventListener('click', () => navigate('settings'));
   document.getElementById('btn-back-reports-settings').addEventListener('click', () => navigate('settings'));
+  document.getElementById('btn-back-workout-settings').addEventListener('click', () => navigate('settings'));
 
   document.getElementById('rp-pr-markers').addEventListener('change', e => {
     const prefs = Storage.getReportsPrefs();
@@ -2445,14 +2889,38 @@ function wireEvents() {
     Storage.saveReportsPrefs(prefs);
   });
 
-  document.querySelectorAll('input[name="exercise-history"]').forEach(radio => {
-    radio.addEventListener('change', () => {
+  document.getElementById('eh-last').addEventListener('change', () => {
+    const prefs   = Storage.getSessionPrefs();
+    const history = new Set(prefs.exerciseHistory || []);
+    document.getElementById('eh-last').checked ? history.add('last') : history.delete('last');
+    prefs.exerciseHistory = [...history];
+    document.getElementById('eh-none').checked = prefs.exerciseHistory.length === 0;
+    Storage.saveSessionPrefs(prefs);
+    if (Storage.getActive()) renderActiveSessionExercises();
+  });
+
+  document.getElementById('eh-pr').addEventListener('change', () => {
+    const prefs   = Storage.getSessionPrefs();
+    const history = new Set(prefs.exerciseHistory || []);
+    document.getElementById('eh-pr').checked ? history.add('pr') : history.delete('pr');
+    prefs.exerciseHistory = [...history];
+    document.getElementById('eh-none').checked = prefs.exerciseHistory.length === 0;
+    Storage.saveSessionPrefs(prefs);
+    if (Storage.getActive()) renderActiveSessionExercises();
+  });
+
+  document.getElementById('eh-none').addEventListener('change', () => {
+    if (document.getElementById('eh-none').checked) {
+      document.getElementById('eh-last').checked = false;
+      document.getElementById('eh-pr').checked   = false;
       const prefs = Storage.getSessionPrefs();
-      prefs.exerciseHistory = radio.value;
+      prefs.exerciseHistory = [];
       Storage.saveSessionPrefs(prefs);
-      // Live-update hints if a session is currently running
       if (Storage.getActive()) renderActiveSessionExercises();
-    });
+    } else {
+      // Cannot uncheck "Don't show" directly — it reflects state, only cleared by checking last/pr
+      document.getElementById('eh-none').checked = true;
+    }
   });
 
   // Units radio buttons
@@ -2499,7 +2967,19 @@ function wireEvents() {
   document.getElementById('exercise-filter-pills').addEventListener('click', e => {
     const pill = e.target.closest('.filter-pill');
     if (!pill) return;
-    state.exerciseFilterType = pill.dataset.filter;
+    if (pill.dataset.filter === 'all') {
+      // All resets both type and user-added filters
+      state.exerciseFilterType      = 'all';
+      state.exerciseFilterUserAdded = false;
+    } else if (pill.dataset.filter === 'user-added') {
+      // Toggle user-added; does not affect type filter
+      state.exerciseFilterUserAdded = !state.exerciseFilterUserAdded;
+    } else {
+      // Strength / Cardio — toggle: clicking the active type resets to 'all'
+      state.exerciseFilterType = state.exerciseFilterType === pill.dataset.filter
+        ? 'all'
+        : pill.dataset.filter;
+    }
     renderExercisesList();
   });
 
@@ -2551,6 +3031,43 @@ function wireEvents() {
     renderPickExerciseList();
     document.getElementById('modal-pick-exercise').classList.add('open');
     document.getElementById('modal-backdrop').classList.add('open');
+  });
+
+  // Workout Plans — Exercises tab
+  document.getElementById('btn-open-add-plan').addEventListener('click', openAddPlanModal);
+  document.getElementById('btn-save-plan').addEventListener('click', handleSavePlan);
+  document.getElementById('btn-cancel-plan').addEventListener('click', closePlanModal);
+
+  // Add exercise to plan from within plan modal
+  document.getElementById('btn-plan-add-exercise').addEventListener('click', () => {
+    state.editingMode    = 'plan';
+    state.pickExerciseFilter = 'all';
+    document.querySelectorAll('#pick-exercise-filter-pills .filter-pill').forEach(p =>
+      p.classList.toggle('filter-pill--active', p.dataset.filter === 'all')
+    );
+    renderPickExerciseList();
+    document.getElementById('modal-pick-exercise').classList.add('open');
+    // backdrop already open from plan modal
+  });
+
+  // Assign plan modal
+  document.getElementById('btn-save-assign-plan').addEventListener('click', handleSaveAssignment);
+  document.getElementById('btn-cancel-assign-plan').addEventListener('click', closeAssignPlanModal);
+
+  // Load plan in session
+  document.getElementById('btn-load-plan-to-session').addEventListener('click', openLoadPlanModal);
+  document.getElementById('btn-cancel-load-plan').addEventListener('click', closeLoadPlanModal);
+
+  // Workout settings toggle
+  document.getElementById('workout-autoload-toggle').addEventListener('change', e => {
+    const s = Storage.getWorkoutSettings();
+    s.autoLoadEnabled = e.target.checked;
+    Storage.saveWorkoutSettings(s);
+  });
+
+  // Home plan selector
+  document.getElementById('home-plan-select').addEventListener('change', e => {
+    state.selectedPlanId = e.target.value || null;
   });
 }
 
