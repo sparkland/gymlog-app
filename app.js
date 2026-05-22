@@ -808,7 +808,10 @@ function renderSessionsList(allSessions) {
         <h3>${session.sessionTypeName}</h3>
         ${session.manuallyEdited ? `<span class="session-edited-badge">✏️ Edited</span>` : ''}
         <p>${secondary}</p>
-        ${session.notes ? `<button class="btn-view-notes" data-id="${session.id}">📝 Notes</button>` : ''}
+        ${session.notes
+          ? `<button class="btn-view-notes" data-id="${session.id}">📝 Notes</button>`
+          : `<button class="btn-add-note"   data-id="${session.id}">+ Add Note</button>`
+        }
       </div>
       <div class="session-duration">
         <div class="session-duration-value">${formatDuration(session.durationSeconds)}</div>
@@ -838,6 +841,10 @@ function renderSessionsList(allSessions) {
 
   list.querySelectorAll('.btn-view-notes').forEach(btn => {
     btn.addEventListener('click', () => showNotesModal(btn.dataset.id));
+  });
+
+  list.querySelectorAll('.btn-add-note').forEach(btn => {
+    btn.addEventListener('click', () => showNotesModal(btn.dataset.id, true));
   });
 
   list.querySelectorAll('.session-edit-btn').forEach(btn => {
