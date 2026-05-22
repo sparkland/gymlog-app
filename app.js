@@ -1516,8 +1516,11 @@ function handleLogSet() {
     const sourceExForMode = state.editingMode === 'history'
       ? (state.editingSession?.exercises || []).find(e => e.exerciseId === exerciseId)
       : ((Storage.getActive() || {}).exercises || []).find(e => e.exerciseId === exerciseId);
-    const weightMode   = sourceExForMode?.weightMode || 'weight';
-    const baseWeightNum= ex.trackWeight && baseWeightVal !== '' ? parseFloat(baseWeightVal) : null;
+    const weightMode = sourceExForMode?.weightMode || 'weight';
+    // Machine weight only applies in weight mode — ignore any residual value when plates are selected
+    const baseWeightNum = (ex.trackWeight && weightMode === 'weight' && baseWeightVal !== '')
+      ? parseFloat(baseWeightVal)
+      : null;
     // Persist base weight to the correct source
     if (ex.trackWeight) {
       if (state.editingMode === 'history') {
