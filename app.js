@@ -884,39 +884,60 @@ function renderSessionsList(allSessions) {
   });
 }
 
-/** Returns the numeric PR value for a set (used to detect if a set equals the all-time best). */
-function setComparableValue(set, exerciseType) {
+/**
+ * Returns a { primary, secondary } score for a set.
+ * Strength: primary = weight/plates, secondary = reps (tiebreaker).
+ * Cardio:   primary = distance (or duration if no distance),
+ *           secondary = duration in seconds (tiebreaker).
+ */
+function getSetPRScore(set, exerciseType) {
   if (exerciseType === 'strength') {
-    return set.weight ?? -1;
+    return {
+      primary:   set.weight ?? -1,
+      secondary: set.reps   ?? 0,
+    };
   }
-  if (set.distance != null) return set.distance;
+  // Cardio
+  let durationSecs = 0;
   if (set.duration) {
     const [m, s] = set.duration.split(':').map(Number);
-    return m * 60 + (s || 0);
+    durationSecs = m * 60 + (s || 0);
   }
-  return -1;
+  const primary = set.distance != null ? set.distance : (durationSecs > 0 ? durationSecs : -1);
+  return { primary, secondary: durationSecs };
 }
 
-/** Returns the highest comparable value across ALL sessions for an exercise. */
-function getPRValueForExercise(exerciseId, exerciseType) {
+/**
+ * Compares two PR scores. Returns true if a is strictly better than b.
+ * Primary wins first; secondary (reps / duration) breaks ties.
+ */
+function prScoreBetter(a, b) {
+  if (a.primary !== b.primary) return a.primary > b.primary;
+  return a.secondary > b.secondary;
+}
+
+/** Returns the single best { primary, secondary } PR score across ALL sessions for an exercise. */
+function getBestPRScore(exerciseId, exerciseType) {
   const sessions = Storage.getSessions();
-  let best = -Infinity;
+  let best = { primary: -Infinity, secondary: -Infinity };
   for (const session of sessions) {
     const ex = (session.exercises || []).find(e => e.exerciseId === exerciseId);
     if (!ex) continue;
     for (const set of (ex.sets || [])) {
-      const v = setComparableValue(set, exerciseType);
-      if (v > best) best = v;
+      const score = getSetPRScore(set, exerciseType);
+      if (prScoreBetter(score, best)) best = score;
     }
   }
   return best;
 }
 
 function renderExerciseSummaryDetail(session, detailEl) {
-  const exercises  = session.exercises || [];
-  const showPR     = Storage.getReportsPrefs().showPRMarkers;
+  const exercises = session.exercises || [];
+  const showPR    = Storage.getReportsPrefs().showPRMarkers;
+  // Track which exercise has already had its single PR awarded this render
   detailEl.innerHTML = exercises.map(ex => {
-    const prValue = showPR ? getPRValueForExercise(ex.exerciseId, ex.exerciseType) : -Infinity;
+    const bestScore = showPR ? getBestPRScore(ex.exerciseId, ex.exerciseType) : null;
+    let prAwarded = false;
     return `
     <div class="report-exercise-block">
       <div class="report-exercise-name">
@@ -924,7 +945,15 @@ function renderExerciseSummaryDetail(session, detailEl) {
         <span class="exercise-type-badge exercise-type-badge--${ex.exerciseType}" style="margin-left:6px">${ex.exerciseType === 'strength' ? 'Strength' : 'Cardio'}</span>
       </div>
       ${ex.sets.map((set, i) => {
-        const isPR = showPR && prValue > -Infinity && setComparableValue(set, ex.exerciseType) === prValue;
+        // A set is PR only if it matches the best score AND no earlier set already claimed it
+        let isPR = false;
+        if (showPR && bestScore && bestScore.primary > -Infinity && !prAwarded) {
+          const score = getSetPRScore(set, ex.exerciseType);
+          if (score.primary === bestScore.primary && score.secondary === bestScore.secondary) {
+            isPR = true;
+            prAwarded = true;   // only the first matching set gets the badge
+          }
+        }
         return `
         <div class="report-set-row${isPR ? ' report-set-row--pr' : ''}">
           <span class="report-set-number">Set ${i + 1}</span>
@@ -1064,36 +1093,27 @@ function getLastSetForExercise(exerciseId) {
 }
 
 /** Returns { set, exerciseType } for the best single set (PR) for exerciseId
- *  across all saved sessions, or null. For strength: highest weight.
- *  For cardio: highest distance, or longest duration as fallback. */
+ *  across all saved sessions, or null.
+ *  Strength: highest weight → tiebreak on reps.
+ *  Cardio:   highest distance → tiebreak on duration; duration-only if no distance. */
 function getPRForExercise(exerciseId) {
   const sessions = Storage.getSessions();
-  let best = null;
-  let bestValue = -Infinity;
+  let bestSet  = null;
+  let bestExType = null;
+  let bestScore = { primary: -Infinity, secondary: -Infinity };
   for (const session of sessions) {
     const ex = (session.exercises || []).find(e => e.exerciseId === exerciseId);
     if (!ex || !ex.sets || ex.sets.length === 0) continue;
     for (const set of ex.sets) {
-      let value;
-      if (ex.exerciseType === 'strength') {
-        value = set.weight ?? -1;
-      } else {
-        if (set.distance != null) {
-          value = set.distance;
-        } else if (set.duration) {
-          const [m, s] = set.duration.split(':').map(Number);
-          value = m * 60 + (s || 0);
-        } else {
-          value = -1;
-        }
-      }
-      if (value > bestValue) {
-        bestValue = value;
-        best = { set, exerciseType: ex.exerciseType };
+      const score = getSetPRScore(set, ex.exerciseType);
+      if (prScoreBetter(score, bestScore)) {
+        bestScore  = score;
+        bestSet    = set;
+        bestExType = ex.exerciseType;
       }
     }
   }
-  return best;
+  return bestSet ? { set: bestSet, exerciseType: bestExType } : null;
 }
 
 /** Returns an HTML string for the exercise history hint row, or '' if not shown. */
