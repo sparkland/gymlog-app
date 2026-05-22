@@ -10,7 +10,7 @@
   <meta http-equiv="Pragma" content="no-cache">
   <meta http-equiv="Expires" content="0">
   <title>GymLog</title>
-  <link rel="stylesheet" href="styles.css?v=23">
+  <link rel="stylesheet" href="styles.css?v=25">
 </head>
 <body>
 
@@ -75,6 +75,13 @@
       <div class="subtype-pills" id="subtype-pills"></div>
     </div>
 
+    <div class="plan-selector-row" id="home-plan-section" style="display:none">
+      <span class="plan-selector-label">📋 Workout plan</span>
+      <select class="form-select form-select--compact" id="home-plan-select">
+        <option value="">None</option>
+      </select>
+    </div>
+
     <div class="start-section">
       <button class="btn-primary" id="btn-start-session" disabled>
         Start Session
@@ -112,7 +119,10 @@
       <div class="session-exercises-section" id="session-exercises-section">
         <div class="session-exercises-header">
           <span class="section-label" style="margin:0;font-size:0.6875rem">Exercises</span>
-          <button class="btn-add-exercise" id="btn-add-exercise-to-session">+ Add Exercise</button>
+          <div class="session-exercises-btns">
+            <button class="btn-add-exercise" id="btn-load-plan-to-session">📋 Plan</button>
+            <button class="btn-add-exercise" id="btn-add-exercise-to-session">+ Add</button>
+          </div>
         </div>
         <div id="session-exercises-list"></div>
       </div>
@@ -139,6 +149,7 @@
     <div class="segment-control" id="exercises-segment">
       <button class="segment-btn segment-btn--active" data-segment="session-types">Session Types</button>
       <button class="segment-btn" data-segment="exercises-library">Exercises</button>
+      <button class="segment-btn" data-segment="workout-plans">Plans</button>
     </div>
 
     <!-- Session Types segment -->
@@ -148,12 +159,20 @@
       <div class="types-list" id="types-list"></div>
     </div>
 
+    <!-- Workout Plans segment -->
+    <div class="segment-panel segment-panel--hidden" id="panel-workout-plans">
+      <button class="add-type-btn" id="btn-open-add-plan">+ Add Workout Plan</button>
+      <div class="section-label" style="padding: 0 20px">Workout Plans</div>
+      <div id="workout-plans-list"></div>
+    </div>
+
     <!-- Exercises Library segment -->
     <div class="segment-panel segment-panel--hidden" id="panel-exercises-library">
       <div class="filter-pills" id="exercise-filter-pills">
         <button class="filter-pill filter-pill--active" data-filter="all">All</button>
         <button class="filter-pill" data-filter="strength">Strength</button>
         <button class="filter-pill" data-filter="cardio">Cardio</button>
+        <button class="filter-pill" data-filter="user-added">User Added</button>
       </div>
       <button class="add-type-btn" id="btn-open-add-exercise">+ Add Exercise</button>
       <div class="section-label" style="padding: 0 20px">Exercise Library</div>
@@ -228,6 +247,14 @@
       <p>Preferences &amp; app info</p>
     </div>
     <div class="settings-list">
+      <button class="settings-row" data-nav="workout-settings">
+        <span class="settings-row-icon">📋</span>
+        <div class="settings-row-info">
+          <h3>Workout Plans</h3>
+          <p>Auto-load plans when starting a session</p>
+        </div>
+        <span class="settings-row-chevron">›</span>
+      </button>
       <button class="settings-row" data-nav="sessions-settings">
         <span class="settings-row-icon">🏃</span>
         <div class="settings-row-info">
@@ -310,6 +337,30 @@
     </div>
   </div>
 
+  <!-- ═══════════════ WORKOUT SETTINGS VIEW ═══════════════ -->
+  <div id="view-workout-settings" class="view">
+    <div class="view-header">
+      <button class="btn-back" id="btn-back-workout-settings">← Settings</button>
+      <h1>Workout Plans</h1>
+      <p>Control how plans interact with sessions</p>
+    </div>
+    <div class="settings-section">
+      <div class="settings-section-label">Auto-load</div>
+      <div class="settings-card">
+        <label class="radio-row" style="border-bottom:none">
+          <span class="radio-row-label">
+            Auto-load assigned plans
+            <span class="radio-row-sub">Starting a session type with an assigned Workout Plan will automatically add those exercises</span>
+          </span>
+          <div class="toggle-switch">
+            <input type="checkbox" id="workout-autoload-toggle" checked>
+            <span class="toggle-thumb"></span>
+          </div>
+        </label>
+      </div>
+    </div>
+  </div>
+
   <!-- ═══════════════ SESSIONS SETTINGS VIEW ═══════════════ -->
   <div id="view-sessions-settings" class="view">
     <div class="view-header">
@@ -325,24 +376,24 @@
             Show last session's result
             <span class="radio-row-sub">Displays the final set from the most recent session containing this exercise</span>
           </span>
-          <input type="radio" name="exercise-history" value="last" id="eh-last">
-          <span class="radio-custom"></span>
+          <input type="checkbox" id="eh-last">
+          <span class="check-custom"></span>
         </label>
         <label class="radio-row">
           <span class="radio-row-label">
             Show Personal Record (PR)
             <span class="radio-row-sub">Displays the best single set ever recorded for this exercise</span>
           </span>
-          <input type="radio" name="exercise-history" value="pr" id="eh-pr">
-          <span class="radio-custom"></span>
+          <input type="checkbox" id="eh-pr">
+          <span class="check-custom"></span>
         </label>
         <label class="radio-row">
           <span class="radio-row-label">
             Don't show previous results
             <span class="radio-row-sub">No history is displayed on the exercise card</span>
           </span>
-          <input type="radio" name="exercise-history" value="none" id="eh-none">
-          <span class="radio-custom"></span>
+          <input type="checkbox" id="eh-none">
+          <span class="check-custom"></span>
         </label>
       </div>
     </div>
@@ -428,7 +479,7 @@
     <div class="about-hero">
       <div class="about-hero-icon">🏋️</div>
       <h2 class="about-app-name">Gym<span>Log</span></h2>
-      <p class="about-version">version 1.5</p>
+      <p class="about-version">version 1.6</p>
     </div>
     <div class="settings-section">
       <div class="settings-section-label">Creator</div>
@@ -449,7 +500,25 @@
       <div class="settings-card release-notes">
         <div class="release-version">
           <div class="release-version-header">
-            <span class="release-badge">v1.5</span>
+            <span class="release-badge">v1.6</span>
+            <span class="release-version-title">Workout Plans &amp; Customisations</span>
+          </div>
+          <ul class="release-list">
+            <li>Added Workout Plans — create named collections of exercises with an emoji icon and assign them to any Session Type or Subtype</li>
+            <li>Plans are managed from the new Plans tab on the Exercises screen — add, edit, or delete plans and their exercise lists at any time</li>
+            <li>Auto-load assigned plans when starting a session, with a per-type/subtype toggle to enable or disable auto-load independently; subtype plan takes priority over type plan</li>
+            <li>Global auto-load toggle in Settings → Workout Plans to turn the feature on or off without removing individual assignments</li>
+            <li>Load a workout plan from the Home screen before starting a session via the plan selector dropdown</li>
+            <li>Load a plan into any running session using the 📋 Plan button — already-added exercises are skipped silently</li>
+            <li>Session History now allows both "Show last session's result" and "Show Personal Record" to be selected together; selecting "Don't show" deselects both</li>
+            <li>When the last session result and the PR are the same set, a single combined 🏆🕐 row is shown instead of duplicating the value</li>
+            <li>PDF export now includes 🏆 PR markers next to the personal-record set for each exercise, controlled by the Show PR markers toggle in Settings → Reports</li>
+            <li>Added a "User Added" filter pill in the Exercise Library to view only custom exercises, combinable with the Strength and Cardio filters</li>
+          </ul>
+        </div>
+        <div class="release-version">
+          <div class="release-version-header">
+            <span class="release-badge release-badge--muted">v1.5</span>
             <span class="release-version-title">Report Editing &amp; Rory Bug Fix</span>
           </div>
           <ul class="release-list">
@@ -553,6 +622,18 @@
           <span class="about-storage-icon">✦</span>
           <span>This app was built and iterated with <strong>Claude Code</strong> as part of a personal journey to learn AI-assisted development tools. Most features, fixes, and design decisions were explored collaboratively with Claude.</span>
         </p>
+      </div>
+    </div>
+    <div class="settings-section">
+      <div class="settings-section-label">Thank Yous</div>
+      <div class="settings-card thankyou-card">
+        <div class="thankyou-row">
+          <span class="thankyou-avatar">🙏</span>
+          <div class="thankyou-info">
+            <p class="thankyou-name">Rory</p>
+            <p class="thankyou-note">Testing, bug reports &amp; improvements throughout development — including suggestions and enhancements that shaped the Workout Plans feature.</p>
+          </div>
+        </div>
       </div>
     </div>
   </div>
@@ -750,6 +831,33 @@
     </div>
   </div>
 
+  <!-- ═══════════════ ADD / EDIT WORKOUT PLAN MODAL ═══════════════ -->
+  <div class="modal modal--tall" id="modal-add-edit-plan">
+    <div class="modal-handle"></div>
+    <h2 id="plan-modal-title">New Workout Plan</h2>
+    <div class="modal-edit-scroll">
+      <div class="modal-form">
+        <div class="form-group">
+          <label for="plan-name">Plan Name</label>
+          <input type="text" id="plan-name" placeholder="e.g. Push Day" maxlength="40">
+        </div>
+        <div class="form-group">
+          <label for="plan-emoji">Emoji Icon</label>
+          <input type="text" id="plan-emoji" placeholder="e.g. 💪" maxlength="4">
+        </div>
+      </div>
+      <div class="edit-section">
+        <div class="edit-section-label">Exercises</div>
+        <div id="plan-exercises-list"></div>
+        <button class="btn-secondary edit-add-exercise-btn" id="btn-plan-add-exercise">+ Add Exercise</button>
+      </div>
+    </div>
+    <div class="modal-actions" style="margin-top:16px">
+      <button class="btn-primary"   id="btn-save-plan">Save Plan</button>
+      <button class="btn-secondary" id="btn-cancel-plan">Cancel</button>
+    </div>
+  </div>
+
   <!-- ═══════════════ PICK EXERCISE MODAL ═══════════════ -->
   <div class="modal modal--tall" id="modal-pick-exercise">
     <div class="modal-handle"></div>
@@ -814,6 +922,42 @@
     </div>
   </div>
 
+  <!-- ═══════════════ ASSIGN PLAN MODAL ═══════════════ -->
+  <div class="modal" id="modal-assign-plan">
+    <div class="modal-handle"></div>
+    <h2>Assign Workout Plan</h2>
+    <p class="modal-subtitle" id="assign-plan-subtitle"></p>
+    <div class="modal-form">
+      <div class="form-group">
+        <label for="assign-plan-select">Workout Plan</label>
+        <select class="form-select" id="assign-plan-select"></select>
+      </div>
+      <div class="form-group">
+        <label class="toggle-row" style="padding:0">
+          <span class="toggle-label">Auto-load when session starts</span>
+          <div class="toggle-switch">
+            <input type="checkbox" id="assign-plan-autoload" checked>
+            <span class="toggle-thumb"></span>
+          </div>
+        </label>
+      </div>
+    </div>
+    <div class="modal-actions" style="margin-top:16px">
+      <button class="btn-primary"   id="btn-save-assign-plan">Save</button>
+      <button class="btn-secondary" id="btn-cancel-assign-plan">Cancel</button>
+    </div>
+  </div>
+
+  <!-- ═══════════════ LOAD PLAN MODAL ═══════════════ -->
+  <div class="modal" id="modal-load-plan">
+    <div class="modal-handle"></div>
+    <h2>Load Workout Plan</h2>
+    <div id="load-plan-list"></div>
+    <div class="modal-actions" style="margin-top:12px">
+      <button class="btn-secondary" id="btn-cancel-load-plan">Cancel</button>
+    </div>
+  </div>
+
   <!-- ═══════════════ ADD TYPE MODAL ═══════════════ -->
   <div class="modal-backdrop" id="modal-backdrop"></div>
 
@@ -846,7 +990,7 @@
   <!-- Toast notification -->
   <div id="toast" class="toast" role="alert" aria-live="assertive"></div>
 
-  <script src="app.js?v=23"></script>
+  <script src="app.js?v=25"></script>
   <script>
     // Register service worker for network-first caching (requires HTTPS or localhost).
     // The SW never touches localStorage — all user data (sessions, name, units) is safe.
