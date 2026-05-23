@@ -12,13 +12,24 @@ const STORAGE_KEYS = {
   REPORTS_PREFS:    'gym_reports_prefs',
   PLANS:            'gym_workout_plans',
   WORKOUT_SETTINGS: 'gym_workout_settings',
+  PROGRESSION:      'gym_progression_settings',
 };
 
 const DEFAULT_UNITS           = { weight: 'kg', distance: 'km' };
-const DEFAULT_SESSION_PREFS   = { exerciseHistory: ['last'] };
-// exerciseHistory: 'last' | 'pr' | 'none'
+const DEFAULT_SESSION_PREFS   = { exerciseHistory: ['last'], copyPreviousSet: false };
+// exerciseHistory: array of 'last' | 'pr'; empty = don't show
+// copyPreviousSet: boolean — pre-fill Log Set modal with last logged set for that exercise
 const DEFAULT_REPORTS_PREFS   = { showPRMarkers: true };
 const DEFAULT_WORKOUT_SETTINGS = { autoLoadEnabled: true };
+const DEFAULT_PROGRESSION_SETTINGS = {
+  enabled:        false,
+  method:         'double-progression', // 'double-progression' | '2-for-2'
+  useRepRange:    false, // false = Max Reps only trigger; true = Min–Max range trigger
+  targetRepsMin:  8,    // lower bound when useRepRange is true
+  targetRepsMax:  12,   // upper bound (and sole trigger when useRepRange is false)
+  targetSets:     3,    // minimum qualifying sets required per session
+  increaseAmount: 2.5,  // added to reference weight; unit matches user's weight unit
+};
 
 const COLOR_PRESETS = [
   '#6366f1','#ef4444','#f97316','#eab308',
@@ -153,11 +164,15 @@ const Storage = {
   saveUnits(u) { localStorage.setItem(STORAGE_KEYS.UNITS, JSON.stringify(u)); },
   getSessionPrefs() {
     const raw = localStorage.getItem(STORAGE_KEYS.SESSION_PREFS);
-    if (!raw) return { exerciseHistory: ['last'] };
+    if (!raw) return { ...DEFAULT_SESSION_PREFS };
     const prefs = JSON.parse(raw);
-    // Migrate old single-string format to array
+    // Migrate old single-string exerciseHistory to array
     if (typeof prefs.exerciseHistory === 'string') {
       prefs.exerciseHistory = prefs.exerciseHistory === 'none' ? [] : [prefs.exerciseHistory];
+    }
+    // Migrate: ensure copyPreviousSet exists (default false)
+    if (typeof prefs.copyPreviousSet === 'undefined') {
+      prefs.copyPreviousSet = false;
     }
     return prefs;
   },
@@ -177,6 +192,22 @@ const Storage = {
   },
   saveWorkoutSettings(settings) {
     localStorage.setItem(STORAGE_KEYS.WORKOUT_SETTINGS, JSON.stringify(settings));
+  },
+  getProgressionSettings() {
+    const raw = localStorage.getItem(STORAGE_KEYS.PROGRESSION);
+    if (!raw) return { ...DEFAULT_PROGRESSION_SETTINGS };
+    const s = JSON.parse(raw);
+    if (typeof s.enabled        === 'undefined') s.enabled        = false;
+    if (typeof s.method         === 'undefined') s.method         = 'double-progression';
+    if (typeof s.useRepRange    === 'undefined') s.useRepRange    = false;
+    if (typeof s.targetRepsMin  === 'undefined') s.targetRepsMin  = DEFAULT_PROGRESSION_SETTINGS.targetRepsMin;
+    if (typeof s.targetRepsMax  === 'undefined') s.targetRepsMax  = DEFAULT_PROGRESSION_SETTINGS.targetRepsMax;
+    if (typeof s.targetSets     === 'undefined') s.targetSets     = DEFAULT_PROGRESSION_SETTINGS.targetSets;
+    if (typeof s.increaseAmount === 'undefined') s.increaseAmount = DEFAULT_PROGRESSION_SETTINGS.increaseAmount;
+    return s;
+  },
+  saveProgressionSettings(s) {
+    localStorage.setItem(STORAGE_KEYS.PROGRESSION, JSON.stringify(s));
   },
   getPlans() {
     const raw = localStorage.getItem(STORAGE_KEYS.PLANS);
@@ -324,6 +355,7 @@ const state = {
   selectedPlanId:      null,     // plan chosen on Home before starting
   assigningTypeId:     null,     // type/subtype being assigned a plan
   assigningSubtypeId:  null,
+  homeDateTimeUserEdited: false, // true when user manually changes date/time on Home this visit
 };
 
 // ─── Utility ──────────────────────────────────────────────────
@@ -483,7 +515,7 @@ function migrateExercises(existing) {
 
 // ─── Router ───────────────────────────────────────────────────
 // Sub-views that live under the Settings tab
-const SETTINGS_SUB_VIEWS = new Set(['units', 'data', 'about', 'sessions-settings', 'reports-settings', 'workout-settings']);
+const SETTINGS_SUB_VIEWS = new Set(['units', 'data', 'about', 'sessions-settings', 'reports-settings', 'workout-settings', 'progression-settings']);
 
 function navigate(viewName) {
   document.querySelectorAll('.view').forEach(v => v.classList.remove('view--active'));
@@ -501,7 +533,8 @@ function navigate(viewName) {
     settings: renderSettings, units: renderUnits, data: renderData, about: renderAbout,
     'sessions-settings': renderSessionPrefs,
     'reports-settings':  renderReportsPrefs,
-    'workout-settings':  renderWorkoutSettings,
+    'workout-settings':        renderWorkoutSettings,
+    'progression-settings':    renderProgressionSettings,
   };
   if (renderers[viewName]) renderers[viewName]();
 }
@@ -533,8 +566,14 @@ function renderHome() {
   const dateInput = document.getElementById('input-date');
   const timeInput = document.getElementById('input-time');
 
-  if (!dateInput.value) dateInput.value = todayISO();
-  if (!timeInput.value) timeInput.value = nowHHMM();
+  // Refresh to current date/time on every Home visit, unless the user manually
+  // edited the fields during this current visit to the Home page.
+  if (!state.homeDateTimeUserEdited) {
+    dateInput.value = todayISO();
+    timeInput.value = nowHHMM();
+  }
+  // Reset the flag so a fresh arrival always refreshes again next time.
+  state.homeDateTimeUserEdited = false;
 
   const badge = document.getElementById('today-badge');
   badge.textContent = dateInput.value === todayISO() ? 'Today' : formatDate(dateInput.value);
@@ -1063,10 +1102,12 @@ function renderUnits() {
 
 // ─── Render: Session Preferences ─────────────────────────────
 function renderSessionPrefs() {
-  const history = Storage.getSessionPrefs().exerciseHistory || [];
-  document.getElementById('eh-last').checked = history.includes('last');
-  document.getElementById('eh-pr').checked   = history.includes('pr');
-  document.getElementById('eh-none').checked = history.length === 0;
+  const prefs   = Storage.getSessionPrefs();
+  const history = prefs.exerciseHistory || [];
+  document.getElementById('eh-last').checked          = history.includes('last');
+  document.getElementById('eh-pr').checked            = history.includes('pr');
+  document.getElementById('eh-none').checked          = history.length === 0;
+  document.getElementById('sl-copy-prev-set').checked = prefs.copyPreviousSet === true;
 }
 
 // ─── Render: Reports Preferences ─────────────────────────────
@@ -1089,6 +1130,33 @@ function renderAbout() {
 function renderWorkoutSettings() {
   const s = Storage.getWorkoutSettings();
   document.getElementById('workout-autoload-toggle').checked = s.autoLoadEnabled;
+}
+
+// ─── Render: Progression Settings ────────────────────────────
+function renderProgressionSettings() {
+  const s     = Storage.getProgressionSettings();
+  const units = Storage.getUnits();
+  document.getElementById('pt-enabled').checked          = s.enabled === true;
+  document.getElementById('pt-method-dp').checked        = s.method === 'double-progression';
+  document.getElementById('pt-method-2for2').checked     = s.method === '2-for-2';
+  document.getElementById('pt-use-rep-range').checked    = s.useRepRange === true;
+  document.getElementById('pt-reps-min').value           = s.targetRepsMin;
+  document.getElementById('pt-reps-max').value           = s.targetRepsMax;
+  document.getElementById('pt-sets').value               = s.targetSets;
+  document.getElementById('pt-increase').value           = s.increaseAmount;
+  document.getElementById('pt-increase-label').textContent = `Increase Amount (${units.weight})`;
+  applyRepRangeState(s.useRepRange === true);
+}
+
+// Enables or disables / greys out the Min Reps input based on the useRepRange toggle
+function applyRepRangeState(enabled) {
+  const minInput = document.getElementById('pt-reps-min');
+  const minLabel = document.querySelector('label[for="pt-reps-min"]');
+  minInput.disabled = !enabled;
+  minInput.closest('.form-group').classList.toggle('pt-rep-range-disabled', !enabled);
+  if (minLabel) minLabel.classList.toggle('pt-rep-range-disabled', !enabled);
+  // Update Max Reps label to reflect whether it's the sole trigger or the upper bound
+  document.querySelector('label[for="pt-reps-max"]').textContent = enabled ? 'Max Reps' : 'Max Reps (trigger)';
 }
 
 // ─── Render: Workout Plans List ──────────────────────────────
@@ -1453,6 +1521,114 @@ function getPRForExercise(exerciseId) {
     }
   }
   return bestSet ? { set: bestSet, exerciseType: bestExType } : null;
+}
+
+/**
+ * Returns a progression recommendation for a trackWeight strength exercise, or null.
+ * Shape: { recommendedValue: number, weightUnit: string, method: string }
+ */
+function getProgressionRecommendation(exerciseId) {
+  const settings = Storage.getProgressionSettings();
+  if (!settings.enabled) return null;
+
+  // Only strength exercises with weight tracking
+  const ex = (Storage.getExercises() || []).find(e => e.id === exerciseId);
+  if (!ex || ex.type !== 'strength' || !ex.trackWeight) return null;
+
+  const { method, useRepRange, targetRepsMin, targetRepsMax, targetSets, increaseAmount } = settings;
+
+  // All sessions containing this exercise, most-recent first
+  const relevantSessions = Storage.getSessions()
+    .filter(s => (s.exercises || []).some(e => e.exerciseId === exerciseId && e.sets?.length > 0))
+    .sort((a, b) => b.date.localeCompare(a.date) || b.startTime.localeCompare(a.startTime));
+
+  if (relevantSessions.length === 0) return null;
+
+  // A session qualifies if it has ≥ targetSets sets meeting the rep criteria.
+  // useRepRange=false: reps >= targetRepsMax (hit the top)
+  // useRepRange=true:  targetRepsMin <= reps <= targetRepsMax (within range)
+  function setQualifies(set) {
+    const r = set.reps ?? 0;
+    return useRepRange ? (r >= targetRepsMin && r <= targetRepsMax) : (r >= targetRepsMax);
+  }
+  function sessionMeetsCriteria(session) {
+    const sessionEx = (session.exercises || []).find(e => e.exerciseId === exerciseId);
+    if (!sessionEx?.sets) return false;
+    return sessionEx.sets.filter(setQualifies).length >= targetSets;
+  }
+
+  // Reference weight = last set of the given session
+  function getReferenceWeight(session) {
+    const sessionEx = (session.exercises || []).find(e => e.exerciseId === exerciseId);
+    const lastSet = sessionEx?.sets?.[sessionEx.sets.length - 1];
+    if (!lastSet || lastSet.weight == null) return null;
+    return { referenceValue: parseFloat(lastSet.weight), weightUnit: lastSet.weightUnit || 'kg' };
+  }
+
+  const mostRecent = relevantSessions[0];
+
+  // Formats a date string (YYYY-MM-DD) as "12 May"
+  function fmtDate(dateStr) {
+    return new Date(dateStr + 'T00:00:00').toLocaleDateString('en-GB', { day: 'numeric', month: 'short' });
+  }
+
+  // Formats a weight value + unit for display in detail text
+  function fmtWeight(value, unit) {
+    return unit === 'plates'
+      ? `${value} plate${value !== 1 ? 's' : ''}`
+      : `${value}${unit}`;
+  }
+
+  // Builds a human-readable detail string for the info popup
+  function buildDetailText(ref, qualifyingSessions) {
+    const unitLabel  = fmtWeight(ref.referenceValue, ref.weightUnit);
+    const sessionEx0 = (qualifyingSessions[0].exercises || []).find(e => e.exerciseId === exerciseId);
+    const qualSets0  = sessionEx0.sets.filter(setQualifies);
+    const maxRepsHit = Math.max(...qualSets0.map(s => s.reps));
+    const repTarget  = useRepRange
+      ? `${targetRepsMin}–${targetRepsMax} reps (rep range)`
+      : `${targetRepsMax}+ reps`;
+
+    if (method === 'double-progression') {
+      return `Double Progression — in your last session (${fmtDate(qualifyingSessions[0].date)}) `
+        + `you completed ${qualSets0.length} set${qualSets0.length !== 1 ? 's' : ''} `
+        + `at ${unitLabel} × ${maxRepsHit} reps, meeting your target of ${targetSets} set${targetSets !== 1 ? 's' : ''} `
+        + `at ${repTarget}. Time to increase the weight!`;
+    }
+    // 2-for-2
+    const d1 = fmtDate(qualifyingSessions[1].date);
+    const d2 = fmtDate(qualifyingSessions[0].date);
+    return `2-for-2 Rule — you hit your target of ${targetSets} set${targetSets !== 1 ? 's' : ''} `
+      + `at ${repTarget} in both of your last two sessions (${d1} and ${d2}). `
+      + `Two consecutive sessions confirms it's time to add ${fmtWeight(increaseAmount, ref.weightUnit)}!`;
+  }
+
+  if (method === 'double-progression') {
+    if (!sessionMeetsCriteria(mostRecent)) return null;
+    const ref = getReferenceWeight(mostRecent);
+    if (!ref) return null;
+    return {
+      recommendedValue: ref.referenceValue + increaseAmount,
+      weightUnit:       ref.weightUnit,
+      method,
+      detailText:       buildDetailText(ref, [mostRecent]),
+    };
+  }
+
+  if (method === '2-for-2') {
+    if (relevantSessions.length < 2) return null;
+    if (!sessionMeetsCriteria(mostRecent) || !sessionMeetsCriteria(relevantSessions[1])) return null;
+    const ref = getReferenceWeight(mostRecent);
+    if (!ref) return null;
+    return {
+      recommendedValue: ref.referenceValue + increaseAmount,
+      weightUnit:       ref.weightUnit,
+      method,
+      detailText:       buildDetailText(ref, [mostRecent, relevantSessions[1]]),
+    };
+  }
+
+  return null;
 }
 
 /** Returns an HTML string for the exercise history hint row, or '' if not shown. */
@@ -1824,9 +2000,9 @@ function openLogSetModal(exerciseId) {
       const weightMode = sourceEx?.weightMode || 'weight';
       document.getElementById('set-weight-mode-toggle').checked = (weightMode === 'weight');
       applyWeightMode(weightMode, units.weight);
-      // Base/machine weight
+      // Base/machine weight — only visible in weight mode, not plates mode
       const baseWeightGroup = document.getElementById('set-base-weight-group');
-      baseWeightGroup.style.display = '';
+      baseWeightGroup.style.display = weightMode === 'plates' ? 'none' : '';
       document.getElementById('set-base-weight-label').textContent = `Machine weight (${units.weight})`;
       const savedBase = sourceEx?.baseWeight ?? null;
       document.getElementById('set-base-weight').value = savedBase !== null ? savedBase : '';
@@ -1853,6 +2029,71 @@ function openLogSetModal(exerciseId) {
   });
   if (ex.type !== 'strength' || !ex.trackWeight) {
     document.getElementById('set-weight').value = '';
+  }
+
+  // Pre-fill from the last logged set when the setting is on (new set only)
+  if (state.editingSetIndex === null && Storage.getSessionPrefs().copyPreviousSet) {
+    const prevSet = sourceEx?.sets?.length > 0
+      ? sourceEx.sets[sourceEx.sets.length - 1]
+      : null;
+    if (prevSet) {
+      if (ex.type === 'strength') {
+        document.getElementById('set-reps').value = prevSet.reps ?? '';
+        if (ex.trackWeight && prevSet.weight != null) {
+          const prevMode = prevSet.weightUnit === 'plates' ? 'plates' : 'weight';
+          document.getElementById('set-weight-mode-toggle').checked = (prevMode === 'weight');
+          applyWeightMode(prevMode, units.weight);
+          document.getElementById('set-weight').value = prevSet.weight;
+        }
+        if (prevSet.baseWeight != null) {
+          document.getElementById('set-base-weight').value = prevSet.baseWeight;
+        }
+      } else {
+        if (prevSet.duration  != null) document.getElementById('set-duration').value  = prevSet.duration;
+        if (prevSet.distance  != null) document.getElementById('set-distance').value  = prevSet.distance;
+        if (prevSet.calories  != null) document.getElementById('set-calories').value  = prevSet.calories;
+      }
+    }
+  }
+
+  // Progression recommendation — new set only, active session only
+  const progressionHintEl = document.getElementById('set-progression-hint');
+  if (state.editingSetIndex === null && state.editingMode !== 'history') {
+    const rec = getProgressionRecommendation(exerciseId);
+    if (rec && ex.type === 'strength' && ex.trackWeight) {
+      const unitLabel = rec.weightUnit === 'plates'
+        ? `plate${rec.recommendedValue !== 1 ? 's' : ''}`
+        : rec.weightUnit;
+      const methodLabel = rec.method === '2-for-2' ? '2-for-2 Rule' : 'Double Progression';
+      // Render structured hint with info button
+      progressionHintEl.innerHTML = `
+        <div class="set-progression-hint-body">
+          <span class="set-progression-hint-icon">📈</span>
+          <div class="set-progression-hint-content">
+            <span class="set-progression-hint-label">${methodLabel}</span>
+            <span class="set-progression-hint-value">Try ${rec.recommendedValue} ${unitLabel}</span>
+          </div>
+        </div>
+        <button class="set-progression-info-btn" id="btn-progression-info" type="button" title="Why this recommendation?">ℹ️</button>
+      `;
+      // Store detail text for the info modal
+      document.getElementById('btn-progression-info').dataset.detail = rec.detailText || '';
+      progressionHintEl.style.display = '';
+      // Override weight field; reps remain from copyPreviousSet if that setting is also on
+      const recMode = rec.weightUnit === 'plates' ? 'plates' : 'weight';
+      const currentMode = document.getElementById('set-weight-mode-toggle').checked ? 'weight' : 'plates';
+      if (recMode !== currentMode) {
+        document.getElementById('set-weight-mode-toggle').checked = (recMode === 'weight');
+        applyWeightMode(recMode, units.weight);
+      }
+      document.getElementById('set-weight').value = rec.recommendedValue;
+    } else {
+      progressionHintEl.style.display = 'none';
+      progressionHintEl.innerHTML = '';
+    }
+  } else {
+    progressionHintEl.style.display = 'none';
+    progressionHintEl.innerHTML = '';
   }
 
   // Pre-populate when editing an existing set
@@ -2026,6 +2267,29 @@ function handleFinishSession() {
   const active = Storage.getActive();
   if (!active) return;
 
+  const exercises = active.exercises || [];
+  if (exercises.length > 0) {
+    // Show confirmation modal with session summary
+    const totalSets = exercises.reduce((sum, ex) => sum + (ex.sets?.length || 0), 0);
+    const exLine = `${exercises.length} exercise${exercises.length !== 1 ? 's' : ''}`;
+    const setLine = `${totalSets} set${totalSets !== 1 ? 's' : ''}`;
+    document.getElementById('finish-confirm-summary').innerHTML = `
+      <p class="finish-confirm-stat">
+        You've logged <strong>${exLine}</strong> and <strong>${setLine}</strong> this session.
+      </p>
+      <p class="finish-confirm-subtext">Ready to save and wrap up?</p>
+    `;
+    document.getElementById('modal-finish-confirm').classList.add('open');
+    document.getElementById('modal-backdrop').classList.add('open');
+  } else {
+    doFinishSession();
+  }
+}
+
+function doFinishSession() {
+  const active = Storage.getActive();
+  if (!active) return;
+
   const endTs    = Date.now();
   const duration = Math.floor((endTs - active.startTimestamp) / 1000);
   const endTime  = new Date(endTs).toTimeString().slice(0, 5);
@@ -2048,7 +2312,27 @@ function handleFinishSession() {
     exercises:          active.exercises || [],
   });
 
+  closeFinishConfirmModal();
   endSession();
+}
+
+function closeFinishConfirmModal() {
+  document.getElementById('modal-finish-confirm').classList.remove('open');
+  document.getElementById('modal-backdrop').classList.remove('open');
+}
+
+function openProgressionInfoModal(detailText) {
+  document.getElementById('progression-info-detail').textContent = detailText;
+  document.getElementById('modal-progression-info').classList.add('open');
+  document.getElementById('modal-backdrop').classList.add('open');
+}
+
+function closeProgressionInfoModal() {
+  document.getElementById('modal-progression-info').classList.remove('open');
+  // Keep backdrop open if log-set modal is still open behind it
+  if (!document.getElementById('modal-log-set').classList.contains('open')) {
+    document.getElementById('modal-backdrop').classList.remove('open');
+  }
 }
 
 function handleCancelSession() {
@@ -2807,13 +3091,27 @@ function wireEvents() {
   document.getElementById('btn-start-session').addEventListener('click', handleStartSession);
 
   document.getElementById('input-date').addEventListener('change', () => {
+    state.homeDateTimeUserEdited = true;
     const dateVal = document.getElementById('input-date').value;
     document.getElementById('today-badge').textContent =
       dateVal === todayISO() ? 'Today' : formatDate(dateVal);
   });
 
+  document.getElementById('input-time').addEventListener('change', () => {
+    state.homeDateTimeUserEdited = true;
+  });
+
   document.getElementById('btn-finish-session').addEventListener('click', handleFinishSession);
   document.getElementById('btn-cancel-session').addEventListener('click', handleCancelSession);
+  document.getElementById('btn-finish-confirm').addEventListener('click', doFinishSession);
+  document.getElementById('btn-finish-keep-going').addEventListener('click', closeFinishConfirmModal);
+
+  // Progression info button — delegated since it's rendered dynamically
+  document.getElementById('modal-log-set').addEventListener('click', e => {
+    const infoBtn = e.target.closest('#btn-progression-info');
+    if (infoBtn) openProgressionInfoModal(infoBtn.dataset.detail || '');
+  });
+  document.getElementById('btn-close-progression-info').addEventListener('click', closeProgressionInfoModal);
 
   document.getElementById('btn-open-add-type').addEventListener('click', openModal);
   document.getElementById('btn-save-type').addEventListener('click', handleSaveType);
@@ -2836,6 +3134,8 @@ function wireEvents() {
     closePlanModal();
     closeAssignPlanModal();
     closeLoadPlanModal();
+    closeFinishConfirmModal();
+    closeProgressionInfoModal();
   });
 
   document.getElementById('btn-open-export').addEventListener('click', openExportModal);
@@ -2921,6 +3221,12 @@ function wireEvents() {
       // Cannot uncheck "Don't show" directly — it reflects state, only cleared by checking last/pr
       document.getElementById('eh-none').checked = true;
     }
+  });
+
+  document.getElementById('sl-copy-prev-set').addEventListener('change', () => {
+    const prefs = Storage.getSessionPrefs();
+    prefs.copyPreviousSet = document.getElementById('sl-copy-prev-set').checked;
+    Storage.saveSessionPrefs(prefs);
   });
 
   // Units radio buttons
@@ -3068,6 +3374,69 @@ function wireEvents() {
   // Home plan selector
   document.getElementById('home-plan-select').addEventListener('change', e => {
     state.selectedPlanId = e.target.value || null;
+  });
+
+  // ── Progression Targets settings ────────────────────────────
+  document.getElementById('btn-back-progression-settings')
+    .addEventListener('click', () => navigate('settings'));
+
+  document.getElementById('pt-enabled').addEventListener('change', e => {
+    const s = Storage.getProgressionSettings();
+    s.enabled = e.target.checked;
+    Storage.saveProgressionSettings(s);
+  });
+
+  document.querySelectorAll('input[name="pt-method"]').forEach(radio => {
+    radio.addEventListener('change', () => {
+      const s = Storage.getProgressionSettings();
+      s.method = radio.value;
+      Storage.saveProgressionSettings(s);
+    });
+  });
+
+  [
+    { id: 'pt-sets',     key: 'targetSets',     parse: parseInt,   min: 1    },
+    { id: 'pt-increase', key: 'increaseAmount', parse: parseFloat, min: 0.25 },
+  ].forEach(({ id, key, parse, min }) => {
+    document.getElementById(id).addEventListener('change', e => {
+      const val = parse(e.target.value, 10);
+      if (isNaN(val) || val < min) {
+        e.target.value = Storage.getProgressionSettings()[key];
+        return;
+      }
+      const s = Storage.getProgressionSettings();
+      s[key] = val;
+      Storage.saveProgressionSettings(s);
+    });
+  });
+
+  document.getElementById('pt-use-rep-range').addEventListener('change', e => {
+    const s = Storage.getProgressionSettings();
+    s.useRepRange = e.target.checked;
+    Storage.saveProgressionSettings(s);
+    applyRepRangeState(s.useRepRange);
+  });
+
+  document.getElementById('pt-reps-min').addEventListener('change', e => {
+    const s   = Storage.getProgressionSettings();
+    // Ignore if disabled (useRepRange is off)
+    if (!s.useRepRange) { e.target.value = s.targetRepsMin; return; }
+    const val = parseInt(e.target.value, 10);
+    if (isNaN(val) || val < 1) { e.target.value = s.targetRepsMin; return; }
+    // Cannot exceed current max reps
+    if (val > s.targetRepsMax) { e.target.value = s.targetRepsMax; return; }
+    s.targetRepsMin = val;
+    Storage.saveProgressionSettings(s);
+  });
+
+  document.getElementById('pt-reps-max').addEventListener('change', e => {
+    const s   = Storage.getProgressionSettings();
+    const val = parseInt(e.target.value, 10);
+    if (isNaN(val) || val < 1) { e.target.value = s.targetRepsMax; return; }
+    // Cannot go below current min reps
+    if (val < s.targetRepsMin) { e.target.value = s.targetRepsMin; return; }
+    s.targetRepsMax = val;
+    Storage.saveProgressionSettings(s);
   });
 }
 
