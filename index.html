@@ -10,7 +10,7 @@
   <meta http-equiv="Pragma" content="no-cache">
   <meta http-equiv="Expires" content="0">
   <title>GymLog</title>
-  <link rel="stylesheet" href="styles.css?v=25">
+  <link rel="stylesheet" href="styles.css?v=26">
 </head>
 <body>
 
@@ -263,6 +263,14 @@
         </div>
         <span class="settings-row-chevron">›</span>
       </button>
+      <button class="settings-row" data-nav="progression-settings">
+        <span class="settings-row-icon">📈</span>
+        <div class="settings-row-info">
+          <h3>Progression Targets</h3>
+          <p>Automatic weight increase suggestions</p>
+        </div>
+        <span class="settings-row-chevron">›</span>
+      </button>
       <button class="settings-row" data-nav="reports-settings">
         <span class="settings-row-icon">📊</span>
         <div class="settings-row-info">
@@ -397,6 +405,21 @@
         </label>
       </div>
     </div>
+    <div class="settings-section">
+      <div class="settings-section-label">Set Logging</div>
+      <div class="settings-card">
+        <label class="radio-row" style="border-bottom:none">
+          <span class="radio-row-label">
+            Copy previous set values
+            <span class="radio-row-sub">When adding a new set, pre-fills the form with the reps, weight and machine weight from your last logged set for that exercise</span>
+          </span>
+          <div class="toggle-switch">
+            <input type="checkbox" id="sl-copy-prev-set">
+            <span class="toggle-thumb"></span>
+          </div>
+        </label>
+      </div>
+    </div>
   </div>
 
   <!-- ═══════════════ REPORTS SETTINGS VIEW ═══════════════ -->
@@ -419,6 +442,97 @@
             <span class="toggle-thumb"></span>
           </div>
         </label>
+      </div>
+    </div>
+  </div>
+
+  <!-- ═══════════════ PROGRESSION TARGETS SETTINGS VIEW ═══════════════ -->
+  <div id="view-progression-settings" class="view">
+    <div class="view-header">
+      <button class="btn-back" id="btn-back-progression-settings">← Settings</button>
+      <h1>Progression Targets</h1>
+      <p>Automatic weight increase suggestions</p>
+    </div>
+    <div class="settings-section">
+      <div class="settings-section-label">Feature</div>
+      <div class="settings-card">
+        <label class="radio-row" style="border-bottom:none">
+          <span class="radio-row-label">
+            Enable progression targets
+            <span class="radio-row-sub">When criteria are met, the Log Set form pre-fills the weight field with a suggested next weight and shows a hint</span>
+          </span>
+          <div class="toggle-switch">
+            <input type="checkbox" id="pt-enabled">
+            <span class="toggle-thumb"></span>
+          </div>
+        </label>
+      </div>
+    </div>
+    <div class="settings-section">
+      <div class="settings-section-label">Progression Method</div>
+      <div class="settings-card">
+        <label class="radio-row">
+          <span class="radio-row-label">
+            Double Progression
+            <span class="radio-row-sub">Suggests an increase when your most recent session with this exercise met the rep and set targets</span>
+          </span>
+          <input type="radio" name="pt-method" id="pt-method-dp" value="double-progression">
+          <span class="radio-custom"></span>
+        </label>
+        <label class="radio-row" style="border-bottom:none">
+          <span class="radio-row-label">
+            2-for-2 Rule
+            <span class="radio-row-sub">Suggests an increase only when your two most recent sessions with this exercise both met the targets</span>
+          </span>
+          <input type="radio" name="pt-method" id="pt-method-2for2" value="2-for-2">
+          <span class="radio-custom"></span>
+        </label>
+      </div>
+    </div>
+    <div class="settings-section">
+      <div class="settings-section-label">Targets</div>
+      <div class="settings-card">
+        <label class="radio-row" style="border-bottom:1px solid var(--border)">
+          <span class="radio-row-label">
+            Use rep range
+            <span class="radio-row-sub">When on, a set qualifies only if reps fall within Min–Max. When off, only Max Reps is used as the trigger.</span>
+          </span>
+          <div class="toggle-switch">
+            <input type="checkbox" id="pt-use-rep-range">
+            <span class="toggle-thumb"></span>
+          </div>
+        </label>
+        <div style="padding:16px 18px; display:flex; flex-direction:column; gap:16px">
+          <div class="datetime-row">
+            <div class="form-group" style="flex:1" id="pt-reps-min-group">
+              <label for="pt-reps-min">Min Reps</label>
+              <input type="number" id="pt-reps-min" min="1" max="999" placeholder="e.g. 8">
+            </div>
+            <div class="form-group" style="flex:1">
+              <label for="pt-reps-max">Max Reps (trigger)</label>
+              <input type="number" id="pt-reps-max" min="1" max="999" placeholder="e.g. 12">
+            </div>
+          </div>
+          <div class="datetime-row">
+            <div class="form-group" style="flex:1">
+              <label for="pt-sets">Target Sets</label>
+              <input type="number" id="pt-sets" min="1" max="99" placeholder="e.g. 3">
+            </div>
+            <div class="form-group" style="flex:1">
+              <label for="pt-increase" id="pt-increase-label">Increase Amount (kg)</label>
+              <input type="number" id="pt-increase" min="0.25" step="0.25" placeholder="e.g. 2.5">
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="settings-section">
+      <div class="settings-section-label">How it works</div>
+      <div class="settings-card">
+        <p style="padding:14px 18px; font-size:0.875rem; color:var(--text-secondary); line-height:1.6; margin:0">
+          When adding a set during a session, the app checks your history for that exercise. If the criteria above are met, the weight field is pre-filled with a suggested increase and a green hint is shown. You can always override the value.<br><br>
+          Only applies to strength exercises with weight tracking enabled.
+        </p>
       </div>
     </div>
   </div>
@@ -479,7 +593,7 @@
     <div class="about-hero">
       <div class="about-hero-icon">🏋️</div>
       <h2 class="about-app-name">Gym<span>Log</span></h2>
-      <p class="about-version">version 1.6</p>
+      <p class="about-version">version 1.7</p>
     </div>
     <div class="settings-section">
       <div class="settings-section-label">Creator</div>
@@ -500,7 +614,22 @@
       <div class="settings-card release-notes">
         <div class="release-version">
           <div class="release-version-header">
-            <span class="release-badge">v1.6</span>
+            <span class="release-badge">v1.7</span>
+            <span class="release-version-title">Progression Targets &amp; Session Set Logging</span>
+          </div>
+          <ul class="release-list">
+            <li>Added Progression Targets — automatically suggests the next weight to use when the Log Set modal is opened, based on your recent performance for that exercise</li>
+            <li>Two progression methods available: Double Progression (one qualifying session triggers a recommendation) and the 2-for-2 Rule (two consecutive qualifying sessions required for a more conservative increase)</li>
+            <li>Configurable targets: set your Min and Max rep range, the number of qualifying sets required per session, and the weight increment to suggest</li>
+            <li>Optional rep range mode — when enabled, a set only qualifies if reps fall within the Min–Max range rather than simply hitting the Max; Min Reps input is greyed out when this is off</li>
+            <li>Recommendation banner appears below the Weight/Plates field in the Log Set modal in green, with the suggested weight pre-filled and an ℹ️ button explaining why the recommendation was made</li>
+            <li>Added "Copy previous set values" toggle in Settings → Sessions — when on, the Log Set modal pre-fills reps, weight (or plates), and machine weight from the most recently logged set for that exercise</li>
+            <li>Copy previous set applies within the current active session only and correctly carries plates mode state across sets</li>
+          </ul>
+        </div>
+        <div class="release-version">
+          <div class="release-version-header">
+            <span class="release-badge release-badge--muted">v1.6</span>
             <span class="release-version-title">Workout Plans &amp; Customisations</span>
           </div>
           <ul class="release-list">
@@ -634,7 +763,25 @@
             <p class="thankyou-note">Testing, bug reports &amp; improvements throughout development — including suggestions and enhancements that shaped the Workout Plans feature.</p>
           </div>
         </div>
+        <div class="thankyou-row">
+          <span class="thankyou-avatar">🏋️</span>
+          <div class="thankyou-info">
+            <p class="thankyou-name">Mark</p>
+            <p class="thankyou-note">For the Progression Targets feature concept — bringing real evidence-based training methodology (Double Progression and the 2-for-2 Rule) into GymLog and making the app genuinely useful for structured strength programming.</p>
+          </div>
+        </div>
       </div>
+    </div>
+  </div>
+
+  <!-- ═══════════════ FINISH SESSION CONFIRM MODAL ═══════════════ -->
+  <div class="modal" id="modal-finish-confirm">
+    <div class="modal-handle"></div>
+    <h2>Finish Session?</h2>
+    <div class="finish-confirm-summary" id="finish-confirm-summary"></div>
+    <div class="modal-actions" style="margin-top:20px">
+      <button class="btn-primary" id="btn-finish-confirm">Finish Session</button>
+      <button class="btn-secondary" id="btn-finish-keep-going">Keep Going</button>
     </div>
   </div>
 
@@ -892,6 +1039,7 @@
           <label for="set-weight" id="set-weight-label">Weight (kg)</label>
           <input type="number" id="set-weight" min="0" step="0.5" placeholder="e.g. 60">
         </div>
+        <div id="set-progression-hint" class="set-progression-hint" style="display:none"></div>
         <div class="form-group base-weight-row" id="set-base-weight-group">
           <label for="set-base-weight" id="set-base-weight-label">Machine weight (kg)</label>
           <input type="number" id="set-base-weight" min="0" step="0.5" placeholder="e.g. 20">
@@ -919,6 +1067,18 @@
     <div class="modal-actions" style="margin-top:16px">
       <button class="btn-primary" id="btn-log-set">Log Set</button>
       <button class="btn-secondary" id="btn-cancel-set">Cancel</button>
+    </div>
+  </div>
+
+  <!-- ═══════════════ PROGRESSION INFO MODAL ═══════════════ -->
+  <div class="modal" id="modal-progression-info">
+    <div class="modal-handle"></div>
+    <h2>📈 Why this recommendation?</h2>
+    <div class="settings-card" style="margin-top:12px">
+      <p style="padding:14px 16px; font-size:0.875rem; line-height:1.6; margin:0; color:var(--text-secondary)" id="progression-info-detail"></p>
+    </div>
+    <div class="modal-actions" style="margin-top:16px">
+      <button class="btn-primary" id="btn-close-progression-info">Got it</button>
     </div>
   </div>
 
@@ -990,7 +1150,7 @@
   <!-- Toast notification -->
   <div id="toast" class="toast" role="alert" aria-live="assertive"></div>
 
-  <script src="app.js?v=25"></script>
+  <script src="app.js?v=26"></script>
   <script>
     // Register service worker for network-first caching (requires HTTPS or localhost).
     // The SW never touches localStorage — all user data (sessions, name, units) is safe.
