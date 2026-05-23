@@ -579,6 +579,26 @@ body {
   margin-bottom: 4px;
 }
 
+/* ─── Finish Session Confirm Modal ───────────────────────────── */
+.finish-confirm-summary {
+  background: var(--bg-elevated);
+  border-radius: var(--radius-md);
+  padding: 16px;
+  margin-top: 16px;
+}
+.finish-confirm-stat {
+  font-size: 0.9375rem;
+  color: var(--text-primary);
+  margin: 0 0 6px;
+  line-height: 1.5;
+}
+.finish-confirm-stat strong { color: var(--accent); }
+.finish-confirm-subtext {
+  font-size: 0.8125rem;
+  color: var(--text-muted);
+  margin: 0;
+}
+
 .export-options {
   display: flex;
   flex-direction: column;
@@ -2198,6 +2218,66 @@ body {
   text-align: right;
 }
 
+/* ─── Log Set Modal — Progression Recommendation Banner ──────── */
+.set-progression-hint {
+  margin: 0 0 14px;
+  padding: 12px 14px;
+  background: color-mix(in srgb, var(--success) 12%, transparent);
+  border: 1.5px solid color-mix(in srgb, var(--success) 45%, transparent);
+  border-radius: var(--radius-md);
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.set-progression-hint-body {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex: 1;
+  min-width: 0;
+}
+.set-progression-hint-icon {
+  font-size: 1.25rem;
+  flex-shrink: 0;
+  line-height: 1;
+}
+.set-progression-hint-content {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+.set-progression-hint-label {
+  font-size: 0.6875rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: color-mix(in srgb, var(--success) 70%, var(--text-secondary));
+  line-height: 1;
+}
+.set-progression-hint-value {
+  font-size: 0.9375rem;
+  font-weight: 700;
+  color: var(--success);
+  line-height: 1.2;
+}
+.set-progression-info-btn {
+  -webkit-appearance: none;
+  appearance: none;
+  background: none;
+  border: none;
+  font-size: 1.125rem;
+  padding: 4px;
+  cursor: pointer;
+  flex-shrink: 0;
+  border-radius: var(--radius-sm);
+  opacity: 0.75;
+  transition: opacity var(--transition);
+  -webkit-tap-highlight-color: transparent;
+  line-height: 1;
+}
+.set-progression-info-btn:hover { opacity: 1; }
+
 /* Sub-description text inside Settings radio rows */
 .radio-row-sub {
   display: block;
@@ -2410,3 +2490,14 @@ body {
 .load-plan-row:last-child  { border-bottom: none; }
 .load-plan-row:active      { opacity: 0.7; }
 .load-plan-row:hover .workout-plan-card-name { color: var(--accent); }
+
+/* ─── Progression Settings — disabled Min Reps state ────────── */
+.pt-rep-range-disabled label,
+.pt-rep-range-disabled {
+  opacity: 0.4;
+  pointer-events: none;
+}
+input:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
