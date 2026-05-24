@@ -79,9 +79,9 @@ test.describe('Session flow', () => {
     const container = page.locator('#pick-exercise-filter-pills');
     const pills = container.locator('.filter-pill');
 
-    // All three pills must be present and visible
-    await expect(pills).toHaveCount(3);
-    for (let i = 0; i < 3; i++) {
+    // All four pills must be present and visible (All, Strength, Cardio, User Added)
+    await expect(pills).toHaveCount(4);
+    for (let i = 0; i < 4; i++) {
       await expect(pills.nth(i)).toBeVisible();
     }
 

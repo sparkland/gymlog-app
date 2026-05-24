@@ -10,7 +10,7 @@
   <meta http-equiv="Pragma" content="no-cache">
   <meta http-equiv="Expires" content="0">
   <title>GymLog</title>
-  <link rel="stylesheet" href="styles.css?v=26">
+  <link rel="stylesheet" href="styles.css?v=31">
 </head>
 <body>
 
@@ -173,6 +173,9 @@
         <button class="filter-pill" data-filter="strength">Strength</button>
         <button class="filter-pill" data-filter="cardio">Cardio</button>
         <button class="filter-pill" data-filter="user-added">User Added</button>
+      </div>
+      <div class="exercise-search-wrap">
+        <input type="search" id="exercise-search" class="exercise-search-input" placeholder="Search exercises…" autocomplete="off">
       </div>
       <button class="add-type-btn" id="btn-open-add-exercise">+ Add Exercise</button>
       <div class="section-label" style="padding: 0 20px">Exercise Library</div>
@@ -546,7 +549,19 @@
     </div>
     <div class="settings-section">
       <div class="settings-section-label">Backup &amp; Restore</div>
-      <div class="settings-card settings-card--actions">
+      <div class="settings-card">
+        <label class="radio-row" style="border-bottom:none">
+          <span class="radio-row-label">
+            Export on session finish
+            <span class="radio-row-sub">Opens the Export dialog each time you finish a session so you can always save a backup</span>
+          </span>
+          <div class="toggle-switch">
+            <input type="checkbox" id="data-export-on-finish">
+            <span class="toggle-thumb"></span>
+          </div>
+        </label>
+      </div>
+      <div class="settings-card settings-card--actions" style="margin-top:10px">
         <button class="data-action-row data-action-row--disabled" disabled>
           <span class="data-action-icon">📥</span>
           <div class="data-action-info">
@@ -593,7 +608,7 @@
     <div class="about-hero">
       <div class="about-hero-icon">🏋️</div>
       <h2 class="about-app-name">Gym<span>Log</span></h2>
-      <p class="about-version">version 1.7</p>
+      <p class="about-version">version 1.7.5</p>
     </div>
     <div class="settings-section">
       <div class="settings-section-label">Creator</div>
@@ -614,7 +629,23 @@
       <div class="settings-card release-notes">
         <div class="release-version">
           <div class="release-version-header">
-            <span class="release-badge">v1.7</span>
+            <span class="release-badge">v1.7.5</span>
+            <span class="release-version-title">Unit Convertor &amp; Bug Fixes</span>
+          </div>
+          <ul class="release-list">
+            <li>Added inline unit convertor in the Log Set modal — converts lbs → kg when kg is selected as your weight unit, and kg → lbs when lbs is selected; converts mi → km or km → mi for distance exercises based on your distance unit setting</li>
+            <li>Convertor is hidden in Plates mode and only shown for exercises with weight or distance tracking enabled</li>
+            <li>Added exercise search bar on the Exercises library page and inside the Add Exercise picker during active sessions — searches filter in combination with the existing Strength, Cardio, and User Added pills</li>
+            <li>Added a New Exercise button inside the Add Exercise picker during a running session — opens the New Exercise form and returns to the picker with the new exercise visible and selectable</li>
+            <li>Added edit support for user-added Session Types, Subtypes, and Exercises — tap the ✏️ button on any custom item to update its name, emoji, or other details</li>
+            <li>Added Export on Session Finish toggle in Settings → Data — when on, the Export dialog opens automatically each time you finish a session</li>
+            <li>Workout Plan dropdown on the Home screen now auto-selects the plan assigned to the chosen Session Type or Subtype; manually changing the dropdown overrides the auto-load, and selecting None prevents any plan from loading even if one is assigned</li>
+            <li>Fixed long notes being unreadable in the Notes viewer on the Reports screen — the note body now scrolls within a capped area while the session header and action buttons remain visible at all times</li>
+          </ul>
+        </div>
+        <div class="release-version">
+          <div class="release-version-header">
+            <span class="release-badge release-badge--muted">v1.7</span>
             <span class="release-version-title">Progression Targets &amp; Session Set Logging</span>
           </div>
           <ul class="release-list">
@@ -822,10 +853,10 @@
   </div>
 
   <!-- ═══════════════ NOTES MODAL ═══════════════ -->
-  <div class="modal" id="modal-notes">
+  <div class="modal modal--notes" id="modal-notes">
     <div class="modal-handle"></div>
     <div class="modal-notes-header" id="modal-notes-header"></div>
-    <div id="modal-notes-body"></div>
+    <div class="modal-notes-body" id="modal-notes-body"></div>
     <div class="modal-actions" id="modal-notes-actions" style="margin-top:20px"></div>
   </div>
 
@@ -878,7 +909,7 @@
   <!-- ═══════════════ ADD CUSTOM EXERCISE MODAL ═══════════════ -->
   <div class="modal" id="modal-add-custom-exercise">
     <div class="modal-handle"></div>
-    <h2>New Exercise</h2>
+    <h2 id="modal-exercise-title">New Exercise</h2>
     <div class="modal-form">
       <div class="form-group">
         <label for="new-exercise-name">Name</label>
@@ -1013,7 +1044,12 @@
       <button class="filter-pill filter-pill--active" data-filter="all">All</button>
       <button class="filter-pill" data-filter="strength">Strength</button>
       <button class="filter-pill" data-filter="cardio">Cardio</button>
+      <button class="filter-pill" data-filter="user-added">User Added</button>
     </div>
+    <div class="exercise-search-wrap exercise-search-wrap--modal">
+      <input type="search" id="pick-exercise-search" class="exercise-search-input" placeholder="Search exercises…" autocomplete="off">
+    </div>
+    <button class="btn-secondary btn-picker-add-exercise" id="btn-picker-add-exercise">+ New Exercise</button>
     <div class="modal-exercise-scroll" id="pick-exercise-list"></div>
   </div>
 
@@ -1038,6 +1074,11 @@
           </label>
           <label for="set-weight" id="set-weight-label">Weight (kg)</label>
           <input type="number" id="set-weight" min="0" step="0.5" placeholder="e.g. 60">
+          <div class="unit-converter-row" id="weight-converter-row" style="display:none">
+            <input type="number" id="weight-converter-input" class="unit-converter-input" min="0" step="0.5" placeholder="0">
+            <span class="unit-converter-from-label" id="weight-converter-label">lbs</span>
+            <button type="button" class="unit-converter-btn" id="weight-converter-btn">→ Convert</button>
+          </div>
         </div>
         <div id="set-progression-hint" class="set-progression-hint" style="display:none"></div>
         <div class="form-group base-weight-row" id="set-base-weight-group">
@@ -1056,6 +1097,11 @@
         <div class="form-group" id="set-distance-group">
           <label for="set-distance" id="set-distance-label">Distance (km)</label>
           <input type="number" id="set-distance" min="0" step="0.01" placeholder="e.g. 5.0">
+          <div class="unit-converter-row" id="distance-converter-row" style="display:none">
+            <input type="number" id="distance-converter-input" class="unit-converter-input" min="0" step="0.01" placeholder="0">
+            <span class="unit-converter-from-label" id="distance-converter-label">mi</span>
+            <button type="button" class="unit-converter-btn" id="distance-converter-btn">→ Convert</button>
+          </div>
         </div>
         <div class="form-group">
           <label for="set-calories">Calories</label>
@@ -1123,7 +1169,7 @@
 
   <div class="modal" id="modal-add-type">
     <div class="modal-handle"></div>
-    <h2>New Session Type</h2>
+    <h2 id="modal-type-title">New Session Type</h2>
     <div class="modal-form">
       <div class="form-group">
         <label for="new-type-name">Name</label>
@@ -1150,7 +1196,7 @@
   <!-- Toast notification -->
   <div id="toast" class="toast" role="alert" aria-live="assertive"></div>
 
-  <script src="app.js?v=26"></script>
+  <script src="app.js?v=31"></script>
   <script>
     // Register service worker for network-first caching (requires HTTPS or localhost).
     // The SW never touches localStorage — all user data (sessions, name, units) is safe.

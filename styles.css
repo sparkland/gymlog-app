@@ -2501,3 +2501,134 @@ input:disabled {
   opacity: 0.4;
   cursor: not-allowed;
 }
+
+/* ─── Exercise Search Input ──────────────────────────────────── */
+.exercise-search-wrap {
+  padding: 0 20px 12px;
+  position: relative;
+}
+.exercise-search-wrap--modal {
+  padding: 0 0 12px;
+}
+.exercise-search-input {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 100%;
+  box-sizing: border-box;
+  background: var(--bg-elevated);
+  border: 1.5px solid var(--border);
+  border-radius: var(--radius-md);
+  color: var(--text-primary);
+  font-size: 0.9375rem;
+  font-family: inherit;
+  padding: 10px 14px 10px 38px;
+  outline: none;
+  transition: border-color var(--transition);
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='%236b7280' stroke-width='2.5' stroke-linecap='round' stroke-linejoin='round'%3E%3Ccircle cx='11' cy='11' r='8'/%3E%3Cline x1='21' y1='21' x2='16.65' y2='16.65'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: 12px center;
+}
+.exercise-search-input:focus {
+  border-color: var(--accent);
+}
+.exercise-search-input::placeholder {
+  color: var(--text-muted);
+}
+/* hide browser's default clear (×) button on search inputs */
+.exercise-search-input::-webkit-search-cancel-button {
+  -webkit-appearance: none;
+  appearance: none;
+  display: none;
+}
+
+/* ─── New Exercise button inside pick-exercise modal ─────────── */
+.btn-picker-add-exercise {
+  width: 100%;
+  margin-bottom: 12px;
+  font-size: 0.875rem;
+}
+
+/* ─── Edit buttons on type / subtype / exercise rows ─────────── */
+.type-edit-btn,
+.subtype-edit-btn,
+.exercise-edit-btn {
+  -webkit-appearance: none;
+  appearance: none;
+  background: none;
+  border: none;
+  color: var(--text-muted);
+  font-size: 0.8125rem;
+  padding: 4px 6px;
+  cursor: pointer;
+  border-radius: var(--radius-sm);
+  transition: color var(--transition);
+  -webkit-tap-highlight-color: transparent;
+  line-height: 1;
+}
+.type-edit-btn:hover,
+.subtype-edit-btn:hover,
+.exercise-edit-btn:hover {
+  color: var(--accent);
+}
+
+/* ─── Log Set — Unit Converter Row ──────────────────────────── */
+.unit-converter-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 8px;
+  padding: 8px 12px;
+  background: color-mix(in srgb, var(--accent) 6%, transparent);
+  border: 1px solid color-mix(in srgb, var(--accent) 20%, transparent);
+  border-radius: var(--radius-sm);
+}
+.unit-converter-input {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 80px;
+  background: var(--bg-elevated);
+  border: 1.5px solid var(--border);
+  border-radius: var(--radius-sm);
+  color: var(--text-primary);
+  font-size: 0.875rem;
+  font-family: inherit;
+  padding: 6px 10px;
+  outline: none;
+  transition: border-color var(--transition);
+}
+.unit-converter-input:focus { border-color: var(--accent); }
+.unit-converter-from-label {
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: var(--text-muted);
+  flex-shrink: 0;
+}
+.unit-converter-btn {
+  -webkit-appearance: none;
+  appearance: none;
+  margin-left: auto;
+  background: var(--accent-soft);
+  border: 1.5px solid var(--accent);
+  border-radius: var(--radius-sm);
+  color: var(--accent);
+  font-size: 0.75rem;
+  font-weight: 600;
+  font-family: inherit;
+  padding: 6px 10px;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: background var(--transition), color var(--transition);
+  -webkit-tap-highlight-color: transparent;
+}
+.unit-converter-btn:hover {
+  background: var(--accent);
+  color: #fff;
+}
+
+/* ─── Notes Modal — scrollable body ─────────────────────────── */
+.modal--notes .modal-notes-body {
+  max-height: 45vh;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+  padding: 4px 0 8px;
+}
