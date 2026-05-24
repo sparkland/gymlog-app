@@ -19,7 +19,7 @@ const DEFAULT_UNITS           = { weight: 'kg', distance: 'km' };
 const DEFAULT_SESSION_PREFS   = { exerciseHistory: ['last'], copyPreviousSet: false };
 // exerciseHistory: array of 'last' | 'pr'; empty = don't show
 // copyPreviousSet: boolean — pre-fill Log Set modal with last logged set for that exercise
-const DEFAULT_REPORTS_PREFS   = { showPRMarkers: true };
+const DEFAULT_REPORTS_PREFS   = { showPRMarkers: true, exportOnFinish: false };
 const DEFAULT_WORKOUT_SETTINGS = { autoLoadEnabled: true };
 const DEFAULT_PROGRESSION_SETTINGS = {
   enabled:        false,
@@ -147,12 +147,28 @@ const Storage = {
   deleteType(id) {
     Storage.saveTypes((Storage.getTypes() || []).filter(t => t.id !== id));
   },
+  updateType(id, fields) {
+    const types = Storage.getTypes() || [];
+    const type  = types.find(t => t.id === id);
+    if (!type) return;
+    Object.assign(type, fields);
+    Storage.saveTypes(types);
+  },
   addSubtype(typeId, subtype) {
     const types = Storage.getTypes() || [];
     const type = types.find(t => t.id === typeId);
     if (!type) return;
     type.subtypes = type.subtypes || [];
     type.subtypes.push(subtype);
+    Storage.saveTypes(types);
+  },
+  updateSubtype(typeId, subtypeId, fields) {
+    const types   = Storage.getTypes() || [];
+    const type    = types.find(t => t.id === typeId);
+    if (!type) return;
+    const subtype = (type.subtypes || []).find(s => s.id === subtypeId);
+    if (!subtype) return;
+    Object.assign(subtype, fields);
     Storage.saveTypes(types);
   },
   getUserName()     { return localStorage.getItem(STORAGE_KEYS.USER_NAME) || null; },
@@ -181,7 +197,10 @@ const Storage = {
   },
   getReportsPrefs() {
     const raw = localStorage.getItem(STORAGE_KEYS.REPORTS_PREFS);
-    return raw ? JSON.parse(raw) : { ...DEFAULT_REPORTS_PREFS };
+    if (!raw) return { ...DEFAULT_REPORTS_PREFS };
+    const prefs = JSON.parse(raw);
+    if (typeof prefs.exportOnFinish === 'undefined') prefs.exportOnFinish = false;
+    return prefs;
   },
   saveReportsPrefs(prefs) {
     localStorage.setItem(STORAGE_KEYS.REPORTS_PREFS, JSON.stringify(prefs));
@@ -282,6 +301,13 @@ const Storage = {
     const list = (Storage.getExercises() || []).filter(e => e.id !== id);
     Storage.saveExercises(list);
   },
+  updateExercise(id, fields) {
+    const list = Storage.getExercises() || [];
+    const ex   = list.find(e => e.id === id);
+    if (!ex) return;
+    Object.assign(ex, fields);
+    Storage.saveExercises(list);
+  },
   addExerciseToActive(entry) {
     const active = Storage.getActive();
     if (!active) return;
@@ -338,12 +364,20 @@ const state = {
   timerInterval:       null,
   reportFilterId:      '',
   expandedTypeId:      null,
-  addSubtypeForTypeId: null,
+  addSubtypeForTypeId:    null,
+  editingTypeId:          null,  // null = adding, string = editing existing type
+  editingSubtypeTypeId:   null,  // parent typeId when editing a subtype
+  editingSubtypeId:       null,  // null = adding, string = editing existing subtype
+  editingExerciseLibId:   null,  // null = adding, string = editing existing exercise
   notesSessionId:      null,
   exercisesSegment:        'session-types',
   exerciseFilterType:      'all',
   exerciseFilterUserAdded: false,
+  exerciseSearch:          '',
   pickExerciseFilter:      'all',
+  pickExerciseUserAdded:   false,
+  pickExerciseSearch:      '',
+  addExerciseFromPicker:   false, // true when New Exercise opened from inside pick-exercise modal
   logSetExerciseId:    null,
   editingSessionId:    null,
   editingSession:      null,
@@ -353,6 +387,7 @@ const state = {
   editingPlanId:       null,     // null = new plan; string = existing plan id
   editingPlan:         null,     // in-memory plan copy during add/edit
   selectedPlanId:      null,     // plan chosen on Home before starting
+  planDropdownTouched: false,    // true if user explicitly changed the Home dropdown
   assigningTypeId:     null,     // type/subtype being assigned a plan
   assigningSubtypeId:  null,
   homeDateTimeUserEdited: false, // true when user manually changes date/time on Home this visit
@@ -612,13 +647,22 @@ function renderTypeGrid() {
 function selectType(id) {
   const prev = state.selectedTypeId;
   state.selectedTypeId = prev === id ? null : id;
-  // Clear subtype and plan selection whenever the type selection changes
-  state.selectedSubtypeId   = null;
-  state.selectedSubtypeName = null;
-  state.selectedPlanId      = null;
+  // Clear subtype and any manual plan choice whenever the type selection changes
+  state.selectedSubtypeId    = null;
+  state.selectedSubtypeName  = null;
+  state.selectedPlanId       = null;
+  state.planDropdownTouched  = false;
+  // Derive the plan suggested by the newly selected type (display only — does not
+  // bypass the global autoLoadEnabled setting; see handleStartSession)
+  let suggestedPlanId = null;
+  if (state.selectedTypeId) {
+    const types = Storage.getTypes() || [];
+    const type  = types.find(t => t.id === state.selectedTypeId);
+    suggestedPlanId = type?.workoutPlanId || null;
+  }
   renderTypeGrid();
   renderSubtypePicker();
-  renderHomePlanSelector();
+  renderHomePlanSelector(suggestedPlanId);
   updateStartButton();
 }
 
@@ -658,7 +702,19 @@ function renderSubtypePicker() {
         state.selectedSubtypeId   = subtype.id;
         state.selectedSubtypeName = subtype.name;
       }
+      // Derive the plan suggested by the selected subtype (or fall back to the type).
+      // This is display-only — does NOT bypass the global autoLoadEnabled setting.
+      const types        = Storage.getTypes() || [];
+      const selectedType = types.find(t => t.id === state.selectedTypeId);
+      let suggestedPlanId;
+      if (state.selectedSubtypeId) {
+        const selectedSubtype = (selectedType?.subtypes || []).find(s => s.id === state.selectedSubtypeId);
+        suggestedPlanId = selectedSubtype?.workoutPlanId || selectedType?.workoutPlanId || null;
+      } else {
+        suggestedPlanId = selectedType?.workoutPlanId || null;
+      }
       renderSubtypePicker();
+      renderHomePlanSelector(suggestedPlanId);
       updateStartButton();
     });
 
@@ -760,9 +816,10 @@ function renderTypes() {
           ${stPlan ? `<span class="plan-assigned-badge">📋 ${stPlan.name}</span>` : ''}
         </div>
         <button class="btn-assign-plan" data-type-id="${type.id}" data-subtype-id="${st.id}" title="Assign workout plan">📋</button>
-        ${!st.isDefault
-          ? `<button class="subtype-delete-btn" data-type-id="${type.id}" data-id="${st.id}" title="Delete subtype">✕</button>`
-          : ''}
+        ${!st.isDefault ? `
+          <button class="subtype-edit-btn" data-type-id="${type.id}" data-id="${st.id}" title="Edit subtype">✏️</button>
+          <button class="subtype-delete-btn" data-type-id="${type.id}" data-id="${st.id}" title="Delete subtype">✕</button>
+        ` : ''}
       </div>
     `; }).join('');
 
@@ -777,7 +834,10 @@ function renderTypes() {
         </div>
         <div class="type-list-actions">
           <button class="btn-assign-plan" data-type-id="${type.id}" data-subtype-id="" title="Assign workout plan">📋</button>
-          ${!type.isDefault ? `<button class="type-delete-btn" data-id="${type.id}" title="Delete type">✕</button>` : ''}
+          ${!type.isDefault ? `
+            <button class="type-edit-btn" data-id="${type.id}" title="Edit type">✏️</button>
+            <button class="type-delete-btn" data-id="${type.id}" title="Delete type">✕</button>
+          ` : ''}
           <div class="type-expand-chevron ${isExpanded ? 'expanded' : ''}">${chevronSVG}</div>
         </div>
       </div>
@@ -795,6 +855,7 @@ function renderTypes() {
   list.querySelectorAll('[data-toggle]').forEach(row => {
     row.addEventListener('click', e => {
       if (e.target.closest('.type-delete-btn')) return;
+      if (e.target.closest('.type-edit-btn'))   return;
       if (e.target.closest('.btn-assign-plan')) return;
       const id = row.dataset.toggle;
       state.expandedTypeId = state.expandedTypeId === id ? null : id;
@@ -809,11 +870,22 @@ function renderTypes() {
     });
   });
 
+  list.querySelectorAll('.type-edit-btn').forEach(btn => {
+    btn.addEventListener('click', e => {
+      e.stopPropagation();
+      openEditTypeModal(btn.dataset.id);
+    });
+  });
+
   list.querySelectorAll('.type-delete-btn').forEach(btn => {
     btn.addEventListener('click', e => {
       e.stopPropagation();
       handleDeleteType(btn.dataset.id);
     });
+  });
+
+  list.querySelectorAll('.subtype-edit-btn').forEach(btn => {
+    btn.addEventListener('click', () => openEditSubtypeModal(btn.dataset.typeId, btn.dataset.id));
   });
 
   list.querySelectorAll('.subtype-delete-btn').forEach(btn => {
@@ -1118,7 +1190,8 @@ function renderReportsPrefs() {
 
 // ─── Render: Data ────────────────────────────────────────────
 function renderData() {
-  // Static view — buttons wired in wireEvents
+  const prefs = Storage.getReportsPrefs();
+  document.getElementById('data-export-on-finish').checked = prefs.exportOnFinish === true;
 }
 
 // ─── Render: About ───────────────────────────────────────────
@@ -1349,7 +1422,7 @@ function addPlanExercisesToSession(planId) {
 }
 
 // ─── Home: Plan Selector ──────────────────────────────────────
-function renderHomePlanSelector() {
+function renderHomePlanSelector(suggestedPlanId = null) {
   const section = document.getElementById('home-plan-section');
   const plans   = Storage.getPlans() || [];
   if (plans.length === 0) {
@@ -1361,7 +1434,8 @@ function renderHomePlanSelector() {
   const sel = document.getElementById('home-plan-select');
   sel.innerHTML = `<option value="">None</option>` +
     plans.map(p => `<option value="${p.id}">${p.emoji || '📋'} ${p.name}</option>`).join('');
-  sel.value = state.selectedPlanId || '';
+  // state.selectedPlanId = user's explicit choice; suggestedPlanId = type/subtype assignment
+  sel.value = state.selectedPlanId || suggestedPlanId || '';
 }
 
 // ─── Session: Load Plan Modal ─────────────────────────────────
@@ -1427,9 +1501,11 @@ function renderExercises() {
 
 function renderExercisesList() {
   const list      = document.getElementById('exercises-list');
+  const searchTerm = state.exerciseSearch.toLowerCase().trim();
   const exercises = (Storage.getExercises() || []).filter(ex => {
     if (state.exerciseFilterType !== 'all' && ex.type !== state.exerciseFilterType) return false;
     if (state.exerciseFilterUserAdded && ex.isDefault) return false;
+    if (searchTerm && !ex.name.toLowerCase().includes(searchTerm)) return false;
     return true;
   });
 
@@ -1461,10 +1537,17 @@ function renderExercisesList() {
       <span class="exercise-entry-name">${ex.name}</span>
       ${indicators.length ? `<span class="exercise-entry-indicators">${indicators.join('')}</span>` : ''}
       <span class="exercise-type-badge exercise-type-badge--${ex.type}">${ex.type === 'strength' ? 'Strength' : 'Cardio'}</span>
-      ${!ex.isDefault ? `<button class="exercise-delete-btn" data-id="${ex.id}" title="Delete exercise">✕</button>` : ''}
+      ${!ex.isDefault ? `
+        <button class="exercise-edit-btn" data-id="${ex.id}" title="Edit exercise">✏️</button>
+        <button class="exercise-delete-btn" data-id="${ex.id}" title="Delete exercise">✕</button>
+      ` : ''}
     `;
 
     list.appendChild(entry);
+  });
+
+  list.querySelectorAll('.exercise-edit-btn').forEach(btn => {
+    btn.addEventListener('click', () => openEditExerciseModal(btn.dataset.id));
   });
 
   list.querySelectorAll('.exercise-delete-btn').forEach(btn => {
@@ -1765,7 +1848,11 @@ function renderActiveSessionExercises() {
 }
 
 // ─── Exercise Modals ──────────────────────────────────────────
-function openAddExerciseModal() {
+function openAddExerciseModal(fromPicker = false) {
+  state.addExerciseFromPicker = fromPicker;
+  state.editingExerciseLibId  = null;
+  document.getElementById('modal-exercise-title').textContent  = 'New Exercise';
+  document.getElementById('btn-save-exercise').textContent     = 'Save Exercise';
   document.getElementById('new-exercise-name').value = '';
   document.getElementById('ex-type-strength').checked = true;
   document.getElementById('new-exercise-track-weight').checked = true;
@@ -1777,9 +1864,36 @@ function openAddExerciseModal() {
   setTimeout(() => document.getElementById('new-exercise-name').focus(), 300);
 }
 
+function openEditExerciseModal(exerciseId) {
+  const exercises = Storage.getExercises() || [];
+  const ex = exercises.find(e => e.id === exerciseId);
+  if (!ex || ex.isDefault) return;
+  state.editingExerciseLibId  = exerciseId;
+  state.addExerciseFromPicker = false;
+  document.getElementById('modal-exercise-title').textContent  = 'Edit Exercise';
+  document.getElementById('btn-save-exercise').textContent     = 'Save Changes';
+  document.getElementById('new-exercise-name').value = ex.name;
+  const isStrength = ex.type === 'strength';
+  document.getElementById('ex-type-strength').checked = isStrength;
+  document.getElementById('ex-type-cardio').checked   = !isStrength;
+  document.getElementById('new-exercise-track-weight').checked   = !!ex.trackWeight;
+  document.getElementById('new-exercise-track-distance').checked = !!ex.trackDistance;
+  document.getElementById('new-exercise-weight-group').style.display   = isStrength ? '' : 'none';
+  document.getElementById('new-exercise-distance-group').style.display = isStrength ? 'none' : '';
+  document.getElementById('modal-add-custom-exercise').classList.add('open');
+  document.getElementById('modal-backdrop').classList.add('open');
+  setTimeout(() => document.getElementById('new-exercise-name').focus(), 300);
+}
+
 function closeAddExerciseModal() {
   document.getElementById('modal-add-custom-exercise').classList.remove('open');
-  document.getElementById('modal-backdrop').classList.remove('open');
+  // If opened from the pick-exercise modal, restore that modal; otherwise close backdrop
+  if (state.addExerciseFromPicker) {
+    document.getElementById('modal-pick-exercise').classList.add('open');
+    state.addExerciseFromPicker = false;
+  } else {
+    document.getElementById('modal-backdrop').classList.remove('open');
+  }
 }
 
 function handleSaveExercise() {
@@ -1788,13 +1902,32 @@ function handleSaveExercise() {
   const type          = document.querySelector('input[name="new-exercise-type"]:checked').value;
   const trackWeight   = type === 'strength' && document.getElementById('new-exercise-track-weight').checked;
   const trackDistance = type === 'cardio'   && document.getElementById('new-exercise-track-distance').checked;
-  Storage.addExercise({ id: generateId(), name, type, trackWeight, trackDistance, isDefault: false });
-  closeAddExerciseModal();
-  renderExercisesList();
+
+  if (state.editingExerciseLibId) {
+    Storage.updateExercise(state.editingExerciseLibId, { name, type, trackWeight, trackDistance });
+    state.editingExerciseLibId = null;
+    closeAddExerciseModal();
+    renderExercisesList();
+  } else {
+    const newExercise = { id: generateId(), name, type, trackWeight, trackDistance, isDefault: false };
+    Storage.addExercise(newExercise);
+    if (state.addExerciseFromPicker) {
+      // Return to the picker with the new exercise in the list
+      closeAddExerciseModal();
+      renderPickExerciseList();
+    } else {
+      closeAddExerciseModal();
+      renderExercisesList();
+    }
+  }
 }
 
 function openPickExerciseModal() {
-  state.pickExerciseFilter = 'all';
+  state.pickExerciseFilter    = 'all';
+  state.pickExerciseUserAdded = false;
+  state.pickExerciseSearch    = '';
+  const pickSearchEl = document.getElementById('pick-exercise-search');
+  if (pickSearchEl) pickSearchEl.value = '';
   renderPickExerciseList();
   document.getElementById('modal-pick-exercise').classList.add('open');
   document.getElementById('modal-backdrop').classList.add('open');
@@ -1834,15 +1967,22 @@ function renderPickExerciseList() {
     );
   }
 
+  const pickSearchTerm = state.pickExerciseSearch.toLowerCase().trim();
   const exercises = (Storage.getExercises() || []).filter(ex => {
     if (existingIds.has(ex.id)) return false;
-    if (state.pickExerciseFilter === 'all') return true;
-    return ex.type === state.pickExerciseFilter;
+    if (state.pickExerciseUserAdded && ex.isDefault) return false;
+    if (state.pickExerciseFilter !== 'all' && ex.type !== state.pickExerciseFilter) return false;
+    if (pickSearchTerm && !ex.name.toLowerCase().includes(pickSearchTerm)) return false;
+    return true;
   });
 
-  // Sync filter pills
+  // Sync filter pills — type pills are mutually exclusive; user-added is an independent toggle
   document.querySelectorAll('#pick-exercise-filter-pills .filter-pill').forEach(pill => {
-    pill.classList.toggle('filter-pill--active', pill.dataset.filter === state.pickExerciseFilter);
+    if (pill.dataset.filter === 'user-added') {
+      pill.classList.toggle('filter-pill--active', state.pickExerciseUserAdded);
+    } else {
+      pill.classList.toggle('filter-pill--active', pill.dataset.filter === state.pickExerciseFilter);
+    }
   });
 
   listEl.innerHTML = '';
@@ -1936,19 +2076,28 @@ function handlePickExercise(exercise) {
 }
 
 function applyWeightMode(mode, weightUnit) {
-  const label = document.getElementById('set-weight-label');
-  const input = document.getElementById('set-weight');
-  const baseGroup = document.getElementById('set-base-weight-group');
+  const label           = document.getElementById('set-weight-label');
+  const input           = document.getElementById('set-weight');
+  const baseGroup       = document.getElementById('set-base-weight-group');
+  const converterRow    = document.getElementById('weight-converter-row');
   if (mode === 'plates') {
     label.textContent      = 'Plates';
     input.step             = '1';
     input.placeholder      = 'e.g. 5';
-    if (baseGroup) baseGroup.style.display = 'none';
+    if (baseGroup)    baseGroup.style.display    = 'none';
+    if (converterRow) converterRow.style.display = 'none';
   } else {
     label.textContent      = `Weight (${weightUnit})`;
     input.step             = '0.5';
     input.placeholder      = 'e.g. 60';
-    if (baseGroup) baseGroup.style.display = '';
+    if (baseGroup)    baseGroup.style.display    = '';
+    if (converterRow) {
+      const fromUnit = weightUnit === 'kg' ? 'lbs' : 'kg';
+      document.getElementById('weight-converter-label').textContent   = fromUnit;
+      document.getElementById('weight-converter-btn').textContent     = `→ Convert to ${weightUnit}`;
+      document.getElementById('weight-converter-input').value         = '';
+      converterRow.style.display = '';
+    }
   }
   input.value = '';
 }
@@ -2006,9 +2155,21 @@ function openLogSetModal(exerciseId) {
       document.getElementById('set-base-weight-label').textContent = `Machine weight (${units.weight})`;
       const savedBase = sourceEx?.baseWeight ?? null;
       document.getElementById('set-base-weight').value = savedBase !== null ? savedBase : '';
+      // Weight converter — only in weight mode (not plates), convert from the opposite unit
+      const weightConverterRow = document.getElementById('weight-converter-row');
+      if (weightMode !== 'plates') {
+        const fromUnit = units.weight === 'kg' ? 'lbs' : 'kg';
+        document.getElementById('weight-converter-label').textContent = fromUnit;
+        document.getElementById('weight-converter-input').value = '';
+        document.getElementById('weight-converter-btn').textContent = `→ Convert to ${units.weight}`;
+        weightConverterRow.style.display = '';
+      } else {
+        weightConverterRow.style.display = 'none';
+      }
     } else {
       weightGroup.style.display = 'none';
       document.getElementById('set-base-weight-group').style.display = 'none';
+      document.getElementById('weight-converter-row').style.display = 'none';
     }
   } else {
     strengthFields.style.display = 'none';
@@ -2017,8 +2178,15 @@ function openLogSetModal(exerciseId) {
     if (ex.trackDistance) {
       distanceGroup.style.display = '';
       document.getElementById('set-distance-label').textContent = `Distance (${units.distance})`;
+      // Distance converter — convert from the opposite unit
+      const fromDistUnit = units.distance === 'km' ? 'mi' : 'km';
+      document.getElementById('distance-converter-label').textContent = fromDistUnit;
+      document.getElementById('distance-converter-input').value = '';
+      document.getElementById('distance-converter-btn').textContent = `→ Convert to ${units.distance}`;
+      document.getElementById('distance-converter-row').style.display = '';
     } else {
       distanceGroup.style.display = 'none';
+      document.getElementById('distance-converter-row').style.display = 'none';
     }
   }
 
@@ -2130,6 +2298,9 @@ function openLogSetModal(exerciseId) {
 function closeLogSetModal() {
   state.logSetExerciseId  = null;
   state.editingSetIndex   = null;
+  // Clear converter inputs
+  document.getElementById('weight-converter-input').value   = '';
+  document.getElementById('distance-converter-input').value = '';
   document.getElementById('modal-log-set').classList.remove('open');
   // Only close backdrop if edit session modal is not open
   if (!document.getElementById('modal-edit-session').classList.contains('open')) {
@@ -2240,23 +2411,31 @@ function handleStartSession() {
     exercises: [],
   });
 
-  // Auto-load assigned plan (subtype takes priority over type)
-  const workoutSettings = Storage.getWorkoutSettings();
-  if (workoutSettings.autoLoadEnabled) {
-    const subtype = state.selectedSubtypeId
-      ? (type.subtypes || []).find(s => s.id === state.selectedSubtypeId)
-      : null;
-    const assignee = (subtype?.workoutPlanId) ? subtype : type;
-    if (assignee?.workoutPlanId && assignee?.workoutPlanAutoLoad !== false) {
-      addPlanExercisesToSession(assignee.workoutPlanId);
+  // Determine which plan to load:
+  //   • If the user explicitly touched the Home dropdown, honour their choice
+  //     (state.selectedPlanId could be a plan id OR null meaning "None").
+  //   • Otherwise, run the normal auto-load path (respects global autoLoadEnabled).
+  if (state.planDropdownTouched) {
+    if (state.selectedPlanId) {
+      addPlanExercisesToSession(state.selectedPlanId);
+    }
+    // "None" selected or no plan chosen → start with no exercises (do nothing)
+  } else {
+    // Auto-load assigned plan (subtype takes priority over type)
+    const workoutSettings = Storage.getWorkoutSettings();
+    if (workoutSettings.autoLoadEnabled) {
+      const subtype = state.selectedSubtypeId
+        ? (type.subtypes || []).find(s => s.id === state.selectedSubtypeId)
+        : null;
+      const assignee = (subtype?.workoutPlanId) ? subtype : type;
+      if (assignee?.workoutPlanId && assignee?.workoutPlanAutoLoad !== false) {
+        addPlanExercisesToSession(assignee.workoutPlanId);
+      }
     }
   }
 
-  // Load any plan manually chosen on the Home screen
-  if (state.selectedPlanId) {
-    addPlanExercisesToSession(state.selectedPlanId);
-    state.selectedPlanId = null;
-  }
+  state.selectedPlanId      = null;
+  state.planDropdownTouched = false;
 
   document.getElementById('bottom-nav').classList.add('hidden');
   navigate('session');
@@ -2314,6 +2493,12 @@ function doFinishSession() {
 
   closeFinishConfirmModal();
   endSession();
+
+  // If export-on-finish is enabled, open the export modal after returning home
+  if (Storage.getReportsPrefs().exportOnFinish) {
+    // Small delay so the home view has finished rendering before the modal slides up
+    setTimeout(openExportModal, 350);
+  }
 }
 
 function closeFinishConfirmModal() {
@@ -2345,6 +2530,8 @@ function endSession() {
   state.selectedTypeId      = null;
   state.selectedSubtypeId   = null;
   state.selectedSubtypeName = null;
+  state.selectedPlanId      = null;
+  state.planDropdownTouched = false;
   document.getElementById('bottom-nav').classList.remove('hidden');
   navigate('home');
 }
@@ -2388,26 +2575,67 @@ function handleSaveType() {
   if (!name)  { document.getElementById('new-type-name').focus();  return; }
   if (!emoji) { document.getElementById('new-type-emoji').focus(); return; }
 
-  Storage.addType({ id:generateId(), name, emoji, color, isDefault:false, subtypes:[] });
+  if (state.editingTypeId) {
+    Storage.updateType(state.editingTypeId, { name, emoji, color });
+    state.editingTypeId = null;
+  } else {
+    Storage.addType({ id:generateId(), name, emoji, color, isDefault:false, subtypes:[] });
+  }
   closeModal();
   renderTypes();
 }
 
-// ─── Add Subtype Modal ────────────────────────────────────────
-function openAddSubtypeModal(typeId) {
-  state.addSubtypeForTypeId = typeId;
+function openEditTypeModal(typeId) {
   const types = Storage.getTypes() || [];
   const type  = types.find(t => t.id === typeId);
-  document.getElementById('modal-subtype-title').textContent =
-    type ? `Add Subtype to ${type.name}` : 'Add Subtype';
+  if (!type || type.isDefault) return;
+  state.editingTypeId = typeId;
+  document.getElementById('modal-type-title').textContent = 'Edit Session Type';
+  document.getElementById('btn-save-type').textContent    = 'Save Changes';
+  document.getElementById('new-type-name').value  = type.name;
+  document.getElementById('new-type-emoji').value = type.emoji;
+  document.getElementById('new-type-color').value = type.color;
+  document.getElementById('modal-add-type').classList.add('open');
+  document.getElementById('modal-backdrop').classList.add('open');
+  setTimeout(() => document.getElementById('new-type-name').focus(), 300);
+}
+
+// ─── Add / Edit Subtype Modal ─────────────────────────────────
+function openAddSubtypeModal(typeId) {
+  state.addSubtypeForTypeId  = typeId;
+  state.editingSubtypeTypeId = null;
+  state.editingSubtypeId     = null;
+  const types = Storage.getTypes() || [];
+  const type  = types.find(t => t.id === typeId);
+  document.getElementById('modal-subtype-title').textContent = type ? `Add Subtype to ${type.name}` : 'Add Subtype';
+  document.getElementById('btn-save-subtype').textContent    = 'Save Subtype';
   document.getElementById('new-subtype-name').value = '';
   document.getElementById('modal-add-subtype').classList.add('open');
   document.getElementById('modal-backdrop').classList.add('open');
   setTimeout(() => document.getElementById('new-subtype-name').focus(), 300);
 }
 
+function openEditSubtypeModal(typeId, subtypeId) {
+  const types   = Storage.getTypes() || [];
+  const type    = types.find(t => t.id === typeId);
+  if (!type) return;
+  const subtype = (type.subtypes || []).find(s => s.id === subtypeId);
+  if (!subtype || subtype.isDefault) return;
+  state.addSubtypeForTypeId  = typeId;
+  state.editingSubtypeTypeId = typeId;
+  state.editingSubtypeId     = subtypeId;
+  document.getElementById('modal-subtype-title').textContent = `Edit Subtype`;
+  document.getElementById('btn-save-subtype').textContent    = 'Save Changes';
+  document.getElementById('new-subtype-name').value = subtype.name;
+  document.getElementById('modal-add-subtype').classList.add('open');
+  document.getElementById('modal-backdrop').classList.add('open');
+  setTimeout(() => document.getElementById('new-subtype-name').focus(), 300);
+}
+
 function closeAddSubtypeModal() {
-  state.addSubtypeForTypeId = null;
+  state.addSubtypeForTypeId  = null;
+  state.editingSubtypeTypeId = null;
+  state.editingSubtypeId     = null;
   document.getElementById('modal-add-subtype').classList.remove('open');
   document.getElementById('modal-backdrop').classList.remove('open');
 }
@@ -2418,7 +2646,11 @@ function handleSaveSubtype() {
     document.getElementById('new-subtype-name').focus();
     return;
   }
-  Storage.addSubtype(state.addSubtypeForTypeId, { id:generateId(), name, isDefault:false });
+  if (state.editingSubtypeId) {
+    Storage.updateSubtype(state.editingSubtypeTypeId, state.editingSubtypeId, { name });
+  } else {
+    Storage.addSubtype(state.addSubtypeForTypeId, { id:generateId(), name, isDefault:false });
+  }
   closeAddSubtypeModal();
   renderTypes();
 }
@@ -2461,7 +2693,7 @@ function showNotesModal(sessionId, editMode = false) {
     document.getElementById('btn-save-note').addEventListener('click', handleSaveNote);
     document.getElementById('btn-cancel-note-edit').addEventListener('click', () => showNotesModal(sessionId, false));
   } else {
-    bodyEl.className  = 'notes-body';
+    bodyEl.className  = 'modal-notes-body notes-body';
     bodyEl.textContent = session.notes || '';
     actionsEl.innerHTML = `
       <button class="btn-primary" id="btn-edit-note">Edit Note</button>
@@ -2607,8 +2839,9 @@ function renderEditExercises() {
   // Delegation — swap exercise
   listEl.querySelectorAll('.btn-edit-swap-exercise').forEach(btn => {
     btn.addEventListener('click', () => {
-      state.editingExerciseId = btn.dataset.exerciseId;
-      state.pickExerciseFilter = 'all';
+      state.editingExerciseId     = btn.dataset.exerciseId;
+      state.pickExerciseFilter    = 'all';
+      state.pickExerciseUserAdded = false;
       document.querySelectorAll('#pick-exercise-filter-pills .filter-pill').forEach(p =>
         p.classList.toggle('filter-pill--active', p.dataset.filter === 'all')
       );
@@ -2705,8 +2938,12 @@ function openModal() {
 }
 
 function closeModal() {
+  state.editingTypeId = null;
   document.getElementById('modal-add-type').classList.remove('open');
   document.getElementById('modal-backdrop').classList.remove('open');
+  // Restore Add Session Type button/title defaults
+  document.getElementById('modal-type-title').textContent = 'New Session Type';
+  document.getElementById('btn-save-type').textContent    = 'Save Type';
 }
 
 function renderColorPresets() {
@@ -3246,6 +3483,11 @@ function wireEvents() {
   });
 
   // Data page
+  document.getElementById('data-export-on-finish').addEventListener('change', e => {
+    const prefs = Storage.getReportsPrefs();
+    prefs.exportOnFinish = e.target.checked;
+    Storage.saveReportsPrefs(prefs);
+  });
   document.getElementById('btn-data-export').addEventListener('click', openExportModal);
   document.getElementById('btn-data-clear').addEventListener('click', () => {
     if (Storage.getSessions().length === 0) return;
@@ -3266,6 +3508,10 @@ function wireEvents() {
     const btn = e.target.closest('.segment-btn');
     if (!btn) return;
     state.exercisesSegment = btn.dataset.segment;
+    // Clear search when switching segments
+    state.exerciseSearch = '';
+    const exSearchEl = document.getElementById('exercise-search');
+    if (exSearchEl) exSearchEl.value = '';
     renderExercises();
   });
 
@@ -3289,8 +3535,19 @@ function wireEvents() {
     renderExercisesList();
   });
 
+  // Exercise library search
+  document.getElementById('exercise-search').addEventListener('input', e => {
+    state.exerciseSearch = e.target.value;
+    renderExercisesList();
+  });
+
   // Add exercise to library
-  document.getElementById('btn-open-add-exercise').addEventListener('click', openAddExerciseModal);
+  document.getElementById('btn-open-add-exercise').addEventListener('click', () => openAddExerciseModal(false));
+  // New Exercise from within the pick-exercise modal (session context)
+  document.getElementById('btn-picker-add-exercise').addEventListener('click', () => {
+    document.getElementById('modal-pick-exercise').classList.remove('open');
+    openAddExerciseModal(true);
+  });
   document.getElementById('btn-save-exercise').addEventListener('click', handleSaveExercise);
   document.getElementById('btn-cancel-exercise').addEventListener('click', closeAddExerciseModal);
 
@@ -3310,7 +3567,23 @@ function wireEvents() {
   document.getElementById('pick-exercise-filter-pills').addEventListener('click', e => {
     const pill = e.target.closest('.filter-pill');
     if (!pill) return;
-    state.pickExerciseFilter = pill.dataset.filter;
+    if (pill.dataset.filter === 'user-added') {
+      // Independent toggle — does not change the type filter
+      state.pickExerciseUserAdded = !state.pickExerciseUserAdded;
+    } else if (pill.dataset.filter === 'all') {
+      // All resets both type and user-added filters
+      state.pickExerciseFilter    = 'all';
+      state.pickExerciseUserAdded = false;
+    } else {
+      // Strength / Cardio — type filter only
+      state.pickExerciseFilter = pill.dataset.filter;
+    }
+    renderPickExerciseList();
+  });
+
+  // Pick exercise modal search
+  document.getElementById('pick-exercise-search').addEventListener('input', e => {
+    state.pickExerciseSearch = e.target.value;
     renderPickExerciseList();
   });
 
@@ -3318,6 +3591,31 @@ function wireEvents() {
   document.getElementById('btn-log-set').addEventListener('click', handleLogSet);
   document.getElementById('btn-cancel-set').addEventListener('click', closeLogSetModal);
   document.getElementById('set-weight-mode-toggle').addEventListener('change', handleWeightModeToggle);
+
+  // Unit converters in log-set modal
+  document.getElementById('weight-converter-btn').addEventListener('click', () => {
+    const raw  = parseFloat(document.getElementById('weight-converter-input').value);
+    if (isNaN(raw) || raw < 0) return;
+    const unit = Storage.getUnits().weight;
+    // fromUnit is the opposite of the current unit setting
+    const converted = unit === 'kg'
+      ? Math.round(raw * 0.45359237 * 100) / 100   // lbs → kg
+      : Math.round(raw * 2.20462262 * 100) / 100;  // kg  → lbs
+    document.getElementById('set-weight').value = converted;
+    document.getElementById('weight-converter-input').value = '';
+  });
+
+  document.getElementById('distance-converter-btn').addEventListener('click', () => {
+    const raw  = parseFloat(document.getElementById('distance-converter-input').value);
+    if (isNaN(raw) || raw < 0) return;
+    const unit = Storage.getUnits().distance;
+    // fromUnit is the opposite of the current unit setting
+    const converted = unit === 'km'
+      ? Math.round(raw * 1.609344 * 100) / 100    // mi  → km
+      : Math.round(raw * 0.621371 * 100) / 100;   // km  → mi
+    document.getElementById('set-distance').value = converted;
+    document.getElementById('distance-converter-input').value = '';
+  });
 
   // Edit session modal
   document.getElementById('btn-save-edit-session').addEventListener('click', handleSaveEditedSession);
@@ -3329,8 +3627,9 @@ function wireEvents() {
   });
 
   document.getElementById('btn-edit-add-exercise').addEventListener('click', () => {
-    state.editingExerciseId  = null;
-    state.pickExerciseFilter = 'all';
+    state.editingExerciseId     = null;
+    state.pickExerciseFilter    = 'all';
+    state.pickExerciseUserAdded = false;
     document.querySelectorAll('#pick-exercise-filter-pills .filter-pill').forEach(p =>
       p.classList.toggle('filter-pill--active', p.dataset.filter === 'all')
     );
@@ -3346,8 +3645,9 @@ function wireEvents() {
 
   // Add exercise to plan from within plan modal
   document.getElementById('btn-plan-add-exercise').addEventListener('click', () => {
-    state.editingMode    = 'plan';
-    state.pickExerciseFilter = 'all';
+    state.editingMode           = 'plan';
+    state.pickExerciseFilter    = 'all';
+    state.pickExerciseUserAdded = false;
     document.querySelectorAll('#pick-exercise-filter-pills .filter-pill').forEach(p =>
       p.classList.toggle('filter-pill--active', p.dataset.filter === 'all')
     );
@@ -3373,7 +3673,8 @@ function wireEvents() {
 
   // Home plan selector
   document.getElementById('home-plan-select').addEventListener('change', e => {
-    state.selectedPlanId = e.target.value || null;
+    state.selectedPlanId       = e.target.value || null;
+    state.planDropdownTouched  = true;   // user explicitly chose — overrides auto-load
   });
 
   // ── Progression Targets settings ────────────────────────────
