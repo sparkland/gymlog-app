@@ -10,6 +10,7 @@
   <meta http-equiv="Pragma" content="no-cache">
   <meta http-equiv="Expires" content="0">
   <title>GymLog</title>
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🏋️</text></svg>">
   <link rel="stylesheet" href="styles.css?v=31">
 </head>
 <body>
@@ -53,7 +54,10 @@
           <h1>Gym<span>Log</span></h1>
           <p class="home-greeting" id="home-greeting"></p>
         </div>
-        <div class="date-badge" id="today-badge">Today</div>
+        <div class="home-hero-top-right">
+          <button class="btn-home-help" id="btn-home-help" aria-label="Help">❓</button>
+          <div class="date-badge" id="today-badge">Today</div>
+        </div>
       </div>
       <div class="datetime-row">
         <div class="input-group">
@@ -298,6 +302,14 @@
         </div>
         <span class="settings-row-chevron">›</span>
       </button>
+      <button class="settings-row" data-nav="help">
+        <span class="settings-row-icon">❓</span>
+        <div class="settings-row-info">
+          <h3>Help</h3>
+          <p>Feature guides &amp; tips</p>
+        </div>
+        <span class="settings-row-chevron">›</span>
+      </button>
       <button class="settings-row" data-nav="about">
         <span class="settings-row-icon">ℹ️</span>
         <div class="settings-row-info">
@@ -522,7 +534,7 @@
               <input type="number" id="pt-sets" min="1" max="99" placeholder="e.g. 3">
             </div>
             <div class="form-group" style="flex:1">
-              <label for="pt-increase" id="pt-increase-label">Increase Amount (kg)</label>
+              <label for="pt-increase" id="pt-increase-label">Increase By (kg)</label>
               <input type="number" id="pt-increase" min="0.25" step="0.25" placeholder="e.g. 2.5">
             </div>
           </div>
@@ -608,7 +620,7 @@
     <div class="about-hero">
       <div class="about-hero-icon">🏋️</div>
       <h2 class="about-app-name">Gym<span>Log</span></h2>
-      <p class="about-version">version 1.7.5</p>
+      <p class="about-version">version 1.8</p>
     </div>
     <div class="settings-section">
       <div class="settings-section-label">Creator</div>
@@ -629,7 +641,18 @@
       <div class="settings-card release-notes">
         <div class="release-version">
           <div class="release-version-header">
-            <span class="release-badge">v1.7.5</span>
+            <span class="release-badge">v1.8</span>
+            <span class="release-version-title">Interactive Feature Guides</span>
+          </div>
+          <ul class="release-list">
+            <li>Added a <strong>Help</strong> page in Settings with a swipeable carousel of animated feature guides — covering Session Types &amp; Subtypes, Workout Plans, Copy Previous Set, and Progression Targets</li>
+            <li>Each guide shows a full GIF walkthrough alongside a plain-English description of the feature and how to use it</li>
+            <li>Dot indicators track your position in the carousel and reset to the first slide each time you open Help</li>
+          </ul>
+        </div>
+        <div class="release-version">
+          <div class="release-version-header">
+            <span class="release-badge release-badge--muted">v1.7.5</span>
             <span class="release-version-title">Unit Convertor &amp; Bug Fixes</span>
           </div>
           <ul class="release-list">
@@ -801,6 +824,65 @@
             <p class="thankyou-note">For the Progression Targets feature concept — bringing real evidence-based training methodology (Double Progression and the 2-for-2 Rule) into GymLog and making the app genuinely useful for structured strength programming.</p>
           </div>
         </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ═══════════════ HELP VIEW ═══════════════ -->
+  <div id="view-help" class="view">
+    <div class="view-header">
+      <button class="btn-back" id="btn-back-help">← Settings</button>
+      <h1>Help</h1>
+      <p>Feature guides</p>
+    </div>
+
+    <div class="help-carousel-wrapper">
+      <div class="help-carousel" id="help-carousel">
+
+        <!-- Slide 1: Session Types & Subtypes -->
+        <div class="help-slide">
+          <h2 class="help-slide-title">Session Types &amp; Subtypes</h2>
+          <div class="help-gif-container">
+            <img class="help-gif" src="resources/gymlog-add-session-type.gif" alt="Add Session Type or Subtype">
+          </div>
+          <p class="help-slide-description">Tap the <strong>Exercises</strong> tab and switch to <strong>Session Types</strong> to create your own training categories. Use the <strong>+</strong> button to add a new Session Type with a name, emoji, and colour. Expand an existing type to add <strong>Subtypes</strong> — for example a "Strength Training" type with subtypes like "Chest", "Back" or "Legs".</p>
+        </div>
+
+        <!-- Slide 2: Workout Plans -->
+        <div class="help-slide">
+          <h2 class="help-slide-title">Workout Plans</h2>
+          <div class="help-gif-container">
+            <img class="help-gif" src="resources/gymlog-add-assign-workout-plan.gif" alt="Add and Assign a Workout Plan">
+          </div>
+          <p class="help-slide-description">In the <strong>Exercises</strong> tab switch to <strong>Plans</strong> to build a Workout Plan — give it a name, an emoji, and add exercises from your library. Assign the plan to a Session Type or Subtype via the link icon on the type card. With auto-load on, starting that session type automatically adds all the plan's exercises.</p>
+        </div>
+
+        <!-- Slide 3: Copy Previous Set -->
+        <div class="help-slide">
+          <h2 class="help-slide-title">Copy Previous Set</h2>
+          <div class="help-gif-container">
+            <img class="help-gif" src="resources/gymlog-set-logging.gif" alt="Copy Previous Set">
+          </div>
+          <p class="help-slide-description">Enable <strong>Copy Previous Set</strong> in <strong>Settings → Sessions</strong> to speed up logging. When you add a second set for an exercise the reps and weight from your last set are pre-filled — simply adjust any values and tap <strong>Log Set</strong>.</p>
+        </div>
+
+        <!-- Slide 4: Progression Targets -->
+        <div class="help-slide">
+          <h2 class="help-slide-title">Progression Targets</h2>
+          <div class="help-gif-container">
+            <img class="help-gif" src="resources/gymlog-progression-targets-portrait.gif" alt="Progression Targets">
+          </div>
+          <p class="help-slide-description">Turn on <strong>Progression Targets</strong> in <strong>Settings → Progression Targets</strong> to receive automatic weight increase suggestions. Choose your method (Double Progression or 2-for-2 Rule), set your target reps and sets, and define the increase amount. When the criteria are met the Log Set form pre-fills the next suggested weight and shows a green banner.</p>
+        </div>
+
+      </div>
+
+      <!-- Slide indicator dots -->
+      <div class="help-dots" id="help-dots">
+        <span class="help-dot help-dot--active" data-index="0"></span>
+        <span class="help-dot" data-index="1"></span>
+        <span class="help-dot" data-index="2"></span>
+        <span class="help-dot" data-index="3"></span>
       </div>
     </div>
   </div>
