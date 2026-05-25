@@ -391,6 +391,7 @@ const state = {
   assigningTypeId:     null,     // type/subtype being assigned a plan
   assigningSubtypeId:  null,
   homeDateTimeUserEdited: false, // true when user manually changes date/time on Home this visit
+  helpOrigin:             'settings', // 'home' | 'settings' — determines back button destination
 };
 
 // ─── Utility ──────────────────────────────────────────────────
@@ -550,7 +551,7 @@ function migrateExercises(existing) {
 
 // ─── Router ───────────────────────────────────────────────────
 // Sub-views that live under the Settings tab
-const SETTINGS_SUB_VIEWS = new Set(['units', 'data', 'about', 'sessions-settings', 'reports-settings', 'workout-settings', 'progression-settings']);
+const SETTINGS_SUB_VIEWS = new Set(['units', 'data', 'about', 'sessions-settings', 'reports-settings', 'workout-settings', 'progression-settings', 'help']);
 
 function navigate(viewName) {
   document.querySelectorAll('.view').forEach(v => v.classList.remove('view--active'));
@@ -570,6 +571,7 @@ function navigate(viewName) {
     'reports-settings':  renderReportsPrefs,
     'workout-settings':        renderWorkoutSettings,
     'progression-settings':    renderProgressionSettings,
+    'help':                    renderHelp,
   };
   if (renderers[viewName]) renderers[viewName]();
 }
@@ -1199,6 +1201,21 @@ function renderAbout() {
   // Static view — no dynamic content needed
 }
 
+// ─── Render: Help ─────────────────────────────────────────────
+function updateHelpDots(activeIndex) {
+  document.querySelectorAll('.help-dot').forEach((dot, i) => {
+    dot.classList.toggle('help-dot--active', i === activeIndex);
+  });
+}
+
+function renderHelp() {
+  const carousel = document.getElementById('help-carousel');
+  if (carousel) carousel.scrollLeft = 0;
+  updateHelpDots(0);
+  const backBtn = document.getElementById('btn-back-help');
+  if (backBtn) backBtn.textContent = state.helpOrigin === 'home' ? '← Home' : '← Settings';
+}
+
 // ─── Render: Workout Settings ────────────────────────────────
 function renderWorkoutSettings() {
   const s = Storage.getWorkoutSettings();
@@ -1217,7 +1234,7 @@ function renderProgressionSettings() {
   document.getElementById('pt-reps-max').value           = s.targetRepsMax;
   document.getElementById('pt-sets').value               = s.targetSets;
   document.getElementById('pt-increase').value           = s.increaseAmount;
-  document.getElementById('pt-increase-label').textContent = `Increase Amount (${units.weight})`;
+  document.getElementById('pt-increase-label').textContent = `Increase By (${units.weight})`;
   applyRepRangeState(s.useRepRange === true);
 }
 
@@ -3326,6 +3343,10 @@ function wireEvents() {
   });
 
   document.getElementById('btn-start-session').addEventListener('click', handleStartSession);
+  document.getElementById('btn-home-help').addEventListener('click', () => {
+    state.helpOrigin = 'home';
+    navigate('help');
+  });
 
   document.getElementById('input-date').addEventListener('change', () => {
     state.homeDateTimeUserEdited = true;
@@ -3409,13 +3430,24 @@ function wireEvents() {
 
   // Settings nav rows
   document.querySelectorAll('.settings-row[data-nav]').forEach(row => {
-    row.addEventListener('click', () => navigate(row.dataset.nav));
+    row.addEventListener('click', () => {
+      if (row.dataset.nav === 'help') state.helpOrigin = 'settings';
+      navigate(row.dataset.nav);
+    });
   });
 
   // Back buttons
   document.getElementById('btn-back-units').addEventListener('click', () => navigate('settings'));
   document.getElementById('btn-back-data').addEventListener('click',  () => navigate('settings'));
   document.getElementById('btn-back-about').addEventListener('click', () => navigate('settings'));
+  document.getElementById('btn-back-help').addEventListener('click',  () => navigate(state.helpOrigin || 'settings'));
+
+  document.getElementById('help-carousel').addEventListener('scroll', () => {
+    const carousel = document.getElementById('help-carousel');
+    const index = Math.round(carousel.scrollLeft / carousel.offsetWidth);
+    updateHelpDots(index);
+  }, { passive: true });
+
   document.getElementById('btn-back-sessions-settings').addEventListener('click', () => navigate('settings'));
   document.getElementById('btn-back-reports-settings').addEventListener('click', () => navigate('settings'));
   document.getElementById('btn-back-workout-settings').addEventListener('click', () => navigate('settings'));
