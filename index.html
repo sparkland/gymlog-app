@@ -12,6 +12,7 @@
   <title>GymLog</title>
   <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🏋️</text></svg>">
   <link rel="stylesheet" href="styles.css?v=31">
+  <link rel="stylesheet" href="styles-home.css?v=1">
 </head>
 <body>
 
@@ -45,49 +46,62 @@
     </div>
   </div>
 
-  <!-- ═══════════════ HOME VIEW ═══════════════ -->
+  <!-- ═══════════════ HOME VIEW (Stitch redesign) ═══════════════ -->
   <div id="view-home" class="view view--active">
 
-    <div class="home-hero">
-      <div class="home-hero-top">
-        <div>
-          <h1>Gym<span>Log</span></h1>
-          <p class="home-greeting" id="home-greeting"></p>
+    <!-- Hero: brand · greeting · help · date badge · date/time pills -->
+    <div class="h-hero">
+      <div class="h-hero-top">
+        <div class="h-hero-brand">
+          <h1 class="h-brand">Gym<span>Log</span></h1>
+          <p class="h-greeting" id="home-greeting"></p>
         </div>
-        <div class="home-hero-top-right">
-          <button class="btn-home-help" id="btn-home-help" aria-label="Help">❓</button>
-          <div class="date-badge" id="today-badge">Today</div>
+        <div class="h-hero-actions">
+          <button class="h-btn-help" id="btn-home-help" aria-label="Help">❓</button>
+          <div class="h-date-badge" id="today-badge">Today</div>
         </div>
       </div>
-      <div class="datetime-row">
-        <div class="input-group">
-          <label for="input-date">Date</label>
-          <input type="date" id="input-date">
-        </div>
-        <div class="input-group">
-          <label for="input-time">Time</label>
-          <input type="time" id="input-time">
-        </div>
+      <div class="h-datetime-row">
+        <label class="h-glass-pill" for="input-date">
+          <span class="h-pill-icon">📅</span>
+          <input type="date" id="input-date" class="h-pill-input">
+        </label>
+        <label class="h-glass-pill" for="input-time">
+          <span class="h-pill-icon">⏰</span>
+          <input type="time" id="input-time" class="h-pill-input">
+        </label>
       </div>
     </div>
 
-    <div class="section-label">Select Session Type</div>
-    <div class="type-grid" id="home-type-grid"></div>
+    <!-- Session type grid -->
+    <div class="h-section">
+      <div class="h-section-hdr">
+        <span class="h-section-title">Session Type</span>
+      </div>
+      <div class="type-grid" id="home-type-grid"></div>
+    </div>
 
-    <div id="subtype-section" class="subtype-section">
-      <div class="subtype-label">Select Subtype <span class="optional-tag">· optional</span></div>
+    <!-- Subtype pills (JS toggles .visible) -->
+    <div class="subtype-section" id="subtype-section">
+      <div class="h-subtype-hdr">
+        <span class="h-section-title">Subtype</span>
+        <span class="h-optional-tag">optional</span>
+      </div>
       <div class="subtype-pills" id="subtype-pills"></div>
     </div>
 
-    <div class="plan-selector-row" id="home-plan-section" style="display:none">
-      <span class="plan-selector-label">📋 Workout plan</span>
+    <!-- Workout plan selector (JS controls display) -->
+    <div class="h-plan-row" id="home-plan-section" style="display:none">
+      <span class="h-plan-icon">📋</span>
+      <span class="h-plan-label">Workout Plan</span>
       <select class="form-select form-select--compact" id="home-plan-select">
         <option value="">None</option>
       </select>
     </div>
 
-    <div class="start-section">
-      <button class="btn-primary" id="btn-start-session" disabled>
+    <!-- Start button -->
+    <div class="h-start-wrap">
+      <button class="h-btn-start" id="btn-start-session" disabled>
         Start Session
       </button>
     </div>
