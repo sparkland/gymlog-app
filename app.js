@@ -2478,7 +2478,13 @@ function handleFinishSession() {
     document.getElementById('modal-finish-confirm').classList.add('open');
     document.getElementById('modal-backdrop').classList.add('open');
   } else {
-    doFinishSession();
+    // No exercises logged — warn before finishing
+    document.getElementById('finish-confirm-summary').innerHTML = `
+      <p class="finish-confirm-stat">⚠️ No exercises logged</p>
+      <p class="finish-confirm-subtext">You haven't added any exercises to this session. Are you sure you want to finish and save it?</p>
+    `;
+    document.getElementById('modal-finish-confirm').classList.add('open');
+    document.getElementById('modal-backdrop').classList.add('open');
   }
 }
 
