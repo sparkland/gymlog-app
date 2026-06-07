@@ -1172,6 +1172,47 @@ function renderExerciseSummaryDetail(session, detailEl) {
       }).join('')}
     </div>`;
   }).join('');
+
+  // Export as Workout Plan button (only when there are exercises)
+  if (exercises.length > 0) {
+    const exportBtn = document.createElement('button');
+    exportBtn.className = 'btn-secondary btn-export-as-plan';
+    exportBtn.textContent = '💾 Export as Workout Plan';
+    exportBtn.style.cssText = 'width:100%;margin-top:12px';
+    exportBtn.addEventListener('click', () => exportSessionAsPlan(session));
+    detailEl.appendChild(exportBtn);
+  }
+}
+
+function exportSessionAsPlan(session) {
+  const planName = session.sessionSubtypeName
+    ? `${session.sessionTypeName} — ${session.sessionSubtypeName}`
+    : session.sessionTypeName;
+  const planEmoji = session.sessionTypeEmoji || '💪';
+
+  // Deduplicate by exerciseId and strip set data
+  const seen = new Set();
+  const planExercises = (session.exercises || [])
+    .filter(ex => { if (seen.has(ex.exerciseId)) return false; seen.add(ex.exerciseId); return true; })
+    .map(ex => ({ exerciseId: ex.exerciseId, exerciseName: ex.exerciseName, exerciseType: ex.exerciseType }));
+
+  // Pre-populate plan state
+  state.editingPlanId    = null;
+  state.editingPlan      = { name: planName, emoji: planEmoji, exercises: planExercises };
+  state.editingMode      = 'plan';
+  state.exercisesSegment = 'workout-plans';
+
+  // Navigate to Exercises > Plans (renderExercises picks up exercisesSegment)
+  navigate('exercises');
+
+  // Open the plan modal pre-filled
+  document.getElementById('plan-modal-title').textContent = 'New Workout Plan';
+  document.getElementById('plan-name').value  = planName;
+  document.getElementById('plan-emoji').value = planEmoji;
+  renderPlanExercises();
+  document.getElementById('modal-add-edit-plan').classList.add('open');
+  document.getElementById('modal-backdrop').classList.add('open');
+  document.getElementById('plan-name').focus();
 }
 
 // ─── Render: Settings ────────────────────────────────────────
