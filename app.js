@@ -579,6 +579,19 @@ function navigate(viewName) {
 // ─── Timer ────────────────────────────────────────────────────
 function startTimer() {
   stopTimer();
+  const active = Storage.getActive();
+  // If session is currently paused, just render the frozen display — don't tick
+  if (active?.pausedAt) {
+    const paused  = active.pausedDuration || 0;
+    const elapsed = Math.floor((active.pausedAt - active.startTimestamp - paused) / 1000);
+    const el = document.getElementById('timer-display');
+    if (el) el.textContent = formatDuration(Math.max(0, elapsed));
+    const btn = document.getElementById('btn-pause-session');
+    if (btn) btn.textContent = 'Resume Session';
+    return;
+  }
+  const btn = document.getElementById('btn-pause-session');
+  if (btn) btn.textContent = 'Pause Session';
   state.timerInterval = setInterval(tickTimer, 500);
   tickTimer();
 }
@@ -594,8 +607,9 @@ function tickTimer() {
   const active = Storage.getActive();
   const el = document.getElementById('timer-display');
   if (!active || !el) { stopTimer(); return; }
-  const elapsed = Math.floor((Date.now() - active.startTimestamp) / 1000);
-  el.textContent = formatDuration(elapsed);
+  const paused   = active.pausedDuration || 0;
+  const elapsed  = Math.floor((Date.now() - active.startTimestamp - paused) / 1000);
+  el.textContent = formatDuration(Math.max(0, elapsed));
 }
 
 // ─── Render: Home ─────────────────────────────────────────────
@@ -2493,7 +2507,10 @@ function doFinishSession() {
   if (!active) return;
 
   const endTs    = Date.now();
-  const duration = Math.floor((endTs - active.startTimestamp) / 1000);
+  // If finishing while paused, count up to the pause point not to now
+  const pausedAt  = active.pausedAt || null;
+  const effectiveEnd = pausedAt ? pausedAt : endTs;
+  const duration  = Math.floor((effectiveEnd - active.startTimestamp - (active.pausedDuration || 0)) / 1000);
   const endTime  = new Date(endTs).toTimeString().slice(0, 5);
   const types    = Storage.getTypes() || [];
   const type     = types.find(t => t.id === active.sessionTypeId) || { name:'Session', emoji:'🏋️' };
@@ -2577,6 +2594,29 @@ function doCancelSession() {
 function closeCancelConfirmModal() {
   document.getElementById('modal-cancel-confirm').classList.remove('open');
   document.getElementById('modal-backdrop').classList.remove('open');
+}
+
+function handlePauseResumeSession() {
+  const active = Storage.getActive();
+  if (!active) return;
+  const btn = document.getElementById('btn-pause-session');
+
+  if (!active.pausedAt) {
+    // ── Pause ──
+    active.pausedAt = Date.now();
+    Storage.saveActive(active);
+    stopTimer();
+    if (btn) btn.textContent = 'Resume Session';
+  } else {
+    // ── Resume ──
+    const pausedFor = Date.now() - active.pausedAt;
+    active.pausedDuration = (active.pausedDuration || 0) + pausedFor;
+    active.pausedAt = null;
+    Storage.saveActive(active);
+    if (btn) btn.textContent = 'Pause Session';
+    state.timerInterval = setInterval(tickTimer, 500);
+    tickTimer();
+  }
 }
 
 function endSession() {
@@ -3398,6 +3438,7 @@ function wireEvents() {
   });
 
   document.getElementById('btn-finish-session').addEventListener('click', handleFinishSession);
+  document.getElementById('btn-pause-session').addEventListener('click', handlePauseResumeSession);
   document.getElementById('btn-cancel-session').addEventListener('click', handleCancelSession);
   document.getElementById('btn-finish-confirm').addEventListener('click', doFinishSession);
   document.getElementById('btn-finish-keep-going').addEventListener('click', closeFinishConfirmModal);
