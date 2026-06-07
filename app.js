@@ -29,6 +29,7 @@ const DEFAULT_PROGRESSION_SETTINGS = {
   targetRepsMax:  12,   // upper bound (and sole trigger when useRepRange is false)
   targetSets:     3,    // minimum qualifying sets required per session
   increaseAmount: 2.5,  // added to reference weight; unit matches user's weight unit
+  increasePlates: false, // when true, recommends +1 plate for plate-tracked exercises
 };
 
 const COLOR_PRESETS = [
@@ -222,7 +223,8 @@ const Storage = {
     if (typeof s.targetRepsMin  === 'undefined') s.targetRepsMin  = DEFAULT_PROGRESSION_SETTINGS.targetRepsMin;
     if (typeof s.targetRepsMax  === 'undefined') s.targetRepsMax  = DEFAULT_PROGRESSION_SETTINGS.targetRepsMax;
     if (typeof s.targetSets     === 'undefined') s.targetSets     = DEFAULT_PROGRESSION_SETTINGS.targetSets;
-    if (typeof s.increaseAmount === 'undefined') s.increaseAmount = DEFAULT_PROGRESSION_SETTINGS.increaseAmount;
+    if (typeof s.increaseAmount  === 'undefined') s.increaseAmount  = DEFAULT_PROGRESSION_SETTINGS.increaseAmount;
+    if (typeof s.increasePlates  === 'undefined') s.increasePlates  = false;
     return s;
   },
   saveProgressionSettings(s) {
@@ -1288,8 +1290,9 @@ function renderProgressionSettings() {
   document.getElementById('pt-reps-min').value           = s.targetRepsMin;
   document.getElementById('pt-reps-max').value           = s.targetRepsMax;
   document.getElementById('pt-sets').value               = s.targetSets;
-  document.getElementById('pt-increase').value           = s.increaseAmount;
-  document.getElementById('pt-increase-label').textContent = `Increase By (${units.weight})`;
+  document.getElementById('pt-increase').value              = s.increaseAmount;
+  document.getElementById('pt-increase-label').textContent  = `Increase By (${units.weight})`;
+  document.getElementById('pt-increase-plates').checked     = s.increasePlates === true;
   applyRepRangeState(s.useRepRange === true);
 }
 
@@ -1690,7 +1693,7 @@ function getProgressionRecommendation(exerciseId) {
   const ex = (Storage.getExercises() || []).find(e => e.id === exerciseId);
   if (!ex || ex.type !== 'strength' || !ex.trackWeight) return null;
 
-  const { method, useRepRange, targetRepsMin, targetRepsMax, targetSets, increaseAmount } = settings;
+  const { method, useRepRange, targetRepsMin, targetRepsMax, targetSets, increaseAmount, increasePlates } = settings;
 
   // All sessions containing this exercise, most-recent first
   const relevantSessions = Storage.getSessions()
@@ -1735,7 +1738,7 @@ function getProgressionRecommendation(exerciseId) {
   }
 
   // Builds a human-readable detail string for the info popup
-  function buildDetailText(ref, qualifyingSessions) {
+  function buildDetailText(ref, qualifyingSessions, increase) {
     const unitLabel  = fmtWeight(ref.referenceValue, ref.weightUnit);
     const sessionEx0 = (qualifyingSessions[0].exercises || []).find(e => e.exerciseId === exerciseId);
     const qualSets0  = sessionEx0.sets.filter(setQualifies);
@@ -1755,18 +1758,21 @@ function getProgressionRecommendation(exerciseId) {
     const d2 = fmtDate(qualifyingSessions[0].date);
     return `2-for-2 Rule — you hit your target of ${targetSets} set${targetSets !== 1 ? 's' : ''} `
       + `at ${repTarget} in both of your last two sessions (${d1} and ${d2}). `
-      + `Two consecutive sessions confirms it's time to add ${fmtWeight(increaseAmount, ref.weightUnit)}!`;
+      + `Two consecutive sessions confirms it's time to add ${fmtWeight(increase, ref.weightUnit)}!`;
   }
 
   if (method === 'double-progression') {
     if (!sessionMeetsCriteria(mostRecent)) return null;
     const ref = getReferenceWeight(mostRecent);
     if (!ref) return null;
+    const isPlates = ref.weightUnit === 'plates';
+    if (isPlates && !increasePlates) return null;       // plates progression disabled
+    const increase = isPlates ? 1 : increaseAmount;
     return {
-      recommendedValue: ref.referenceValue + increaseAmount,
+      recommendedValue: ref.referenceValue + increase,
       weightUnit:       ref.weightUnit,
       method,
-      detailText:       buildDetailText(ref, [mostRecent]),
+      detailText:       buildDetailText(ref, [mostRecent], increase),
     };
   }
 
@@ -1775,11 +1781,14 @@ function getProgressionRecommendation(exerciseId) {
     if (!sessionMeetsCriteria(mostRecent) || !sessionMeetsCriteria(relevantSessions[1])) return null;
     const ref = getReferenceWeight(mostRecent);
     if (!ref) return null;
+    const isPlates = ref.weightUnit === 'plates';
+    if (isPlates && !increasePlates) return null;       // plates progression disabled
+    const increase = isPlates ? 1 : increaseAmount;
     return {
-      recommendedValue: ref.referenceValue + increaseAmount,
+      recommendedValue: ref.referenceValue + increase,
       weightUnit:       ref.weightUnit,
       method,
-      detailText:       buildDetailText(ref, [mostRecent, relevantSessions[1]]),
+      detailText:       buildDetailText(ref, [mostRecent, relevantSessions[1]], increase),
     };
   }
 
@@ -3892,6 +3901,12 @@ function wireEvents() {
     // Cannot go below current min reps
     if (val < s.targetRepsMin) { e.target.value = s.targetRepsMin; return; }
     s.targetRepsMax = val;
+    Storage.saveProgressionSettings(s);
+  });
+
+  document.getElementById('pt-increase-plates').addEventListener('change', e => {
+    const s = Storage.getProgressionSettings();
+    s.increasePlates = e.target.checked;
     Storage.saveProgressionSettings(s);
   });
 }
