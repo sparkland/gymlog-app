@@ -2538,7 +2538,39 @@ function closeProgressionInfoModal() {
 }
 
 function handleCancelSession() {
+  const active = Storage.getActive();
+  if (!active) return;
+
+  const exercises = active.exercises || [];
+  const totalSets = exercises.reduce((sum, ex) => sum + (ex.sets?.length || 0), 0);
+
+  let summaryHtml;
+  if (totalSets > 0) {
+    const exLine  = `${exercises.length} exercise${exercises.length !== 1 ? 's' : ''}`;
+    const setLine = `${totalSets} set${totalSets !== 1 ? 's' : ''}`;
+    summaryHtml = `
+      <p class="finish-confirm-stat">
+        You've logged <strong>${exLine}</strong> and <strong>${setLine}</strong> this session.
+      </p>
+      <p class="finish-confirm-subtext">Cancelling will permanently discard all of this data.</p>
+    `;
+  } else {
+    summaryHtml = `<p class="finish-confirm-subtext">This session has no logged sets. Are you sure you want to discard it?</p>`;
+  }
+
+  document.getElementById('cancel-confirm-summary').innerHTML = summaryHtml;
+  document.getElementById('modal-cancel-confirm').classList.add('open');
+  document.getElementById('modal-backdrop').classList.add('open');
+}
+
+function doCancelSession() {
+  closeCancelConfirmModal();
   endSession();
+}
+
+function closeCancelConfirmModal() {
+  document.getElementById('modal-cancel-confirm').classList.remove('open');
+  document.getElementById('modal-backdrop').classList.remove('open');
 }
 
 function endSession() {
@@ -3363,6 +3395,8 @@ function wireEvents() {
   document.getElementById('btn-cancel-session').addEventListener('click', handleCancelSession);
   document.getElementById('btn-finish-confirm').addEventListener('click', doFinishSession);
   document.getElementById('btn-finish-keep-going').addEventListener('click', closeFinishConfirmModal);
+  document.getElementById('btn-cancel-confirm').addEventListener('click', doCancelSession);
+  document.getElementById('btn-cancel-keep-going').addEventListener('click', closeCancelConfirmModal);
 
   // Progression info button — delegated since it's rendered dynamically
   document.getElementById('modal-log-set').addEventListener('click', e => {
@@ -3393,6 +3427,7 @@ function wireEvents() {
     closeAssignPlanModal();
     closeLoadPlanModal();
     closeFinishConfirmModal();
+    closeCancelConfirmModal();
     closeProgressionInfoModal();
   });
 
