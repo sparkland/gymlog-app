@@ -2911,6 +2911,10 @@ input:disabled {
 /* ─── Full-height views (no bottom nav) ──────────────────────── */
 .view--full { bottom: 0 !important; }
 
+/* Push the header title below the fixed hamburger + logo on full-screen views.
+   Hamburger: top 14px + height 36px = 50px bottom edge; add 14px breathing room. */
+.view--full .view-header { padding-top: 64px; }
+
 /* ─── Training Page ──────────────────────────────────────────── */
 .training-section {
   padding: 0 16px;
