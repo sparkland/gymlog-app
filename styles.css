@@ -2768,6 +2768,25 @@ input:disabled {
 #btn-hamburger:hover { background: var(--accent-soft); color: var(--accent); }
 #btn-hamburger.hamburger-hidden { display: none !important; }
 
+/* ─── Fixed Page Logo (beside hamburger) ─────────────────────── */
+#page-logo {
+  position: fixed;
+  top: 14px;
+  left: 58px;          /* 14px left + 36px button + 8px gap */
+  height: 36px;
+  z-index: 150;
+  display: flex;
+  align-items: center;
+  font-size: 0.875rem;
+  font-weight: 800;
+  letter-spacing: -0.03em;
+  color: var(--text-primary);
+  pointer-events: none;
+  user-select: none;
+}
+#page-logo span { color: var(--accent); }
+#page-logo.page-logo--hidden { display: none !important; }
+
 /* ─── Sidebar Scrim ──────────────────────────────────────────── */
 #sidebar-scrim {
   position: fixed;
