@@ -1,0 +1,480 @@
+/* ═══════════════════════════════════════════════════════════════
+   GymLog — Home View Redesign  (Stitch-inspired glassmorphism)
+   Loaded after styles.css — higher-specificity rules override
+   existing type-card / subtype-section defaults only within
+   #view-home so all other views remain unaffected.
+   ═══════════════════════════════════════════════════════════════ */
+
+/* ── Web fonts ──────────────────────────────────────────────── */
+@import url('https://fonts.googleapis.com/css2?family=Sora:wght@600;700;800&display=swap');
+
+/* ── Design tokens scoped to the home view ─────────────────── */
+#view-home {
+  --h-primary:         #d0bcff;
+  --h-primary-dim:     rgba(208, 188, 255, 0.14);
+  --h-primary-glow:    rgba(208, 188, 255, 0.35);
+  --h-glass-bg:        rgba(255, 255, 255, 0.055);
+  --h-glass-bg-hover:  rgba(255, 255, 255, 0.09);
+  --h-glass-border:    rgba(255, 255, 255, 0.1);
+  --h-glass-border-hi: rgba(208, 188, 255, 0.35);
+  --h-muted:           rgba(226, 225, 238, 0.55);
+  --h-section-gap:     20px;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+  padding-bottom: 24px;
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   HERO — brand · greeting · date/time pills
+   ═══════════════════════════════════════════════════════════════ */
+
+.h-hero {
+  padding: 18px var(--h-section-gap) 16px;
+}
+
+.h-hero-top {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  margin-bottom: 16px;
+  gap: 12px;
+}
+
+/* Brand name */
+.h-brand {
+  font-family: 'Sora', sans-serif;
+  font-size: 1.75rem;
+  font-weight: 800;
+  letter-spacing: -0.03em;
+  line-height: 1;
+  margin: 0 0 5px;
+  color: var(--text-primary);
+}
+
+.h-brand span {
+  color: var(--h-primary);
+}
+
+/* Greeting */
+.h-greeting {
+  font-size: 0.875rem;
+  color: var(--h-muted);
+  margin: 0;
+  min-height: 1.3em;
+  line-height: 1.3;
+}
+
+/* Right cluster: help btn + date badge */
+.h-hero-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-shrink: 0;
+  padding-top: 2px;
+}
+
+/* Help button */
+.h-btn-help {
+  -webkit-appearance: none;
+  appearance: none;
+  background: var(--h-glass-bg);
+  border: 1px solid var(--h-glass-border);
+  border-radius: 50%;
+  width: 34px;
+  height: 34px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.9375rem;
+  cursor: pointer;
+  color: var(--h-muted);
+  transition: background var(--transition), border-color var(--transition);
+  -webkit-tap-highlight-color: transparent;
+  flex-shrink: 0;
+}
+
+.h-btn-help:hover   { background: var(--h-primary-dim); border-color: var(--h-glass-border-hi); }
+.h-btn-help:active  { transform: scale(0.92); }
+
+/* Date badge */
+.h-date-badge {
+  background: var(--h-glass-bg);
+  border: 1px solid var(--h-glass-border);
+  border-radius: 9999px;
+  padding: 6px 14px;
+  font-size: 0.8125rem;
+  font-weight: 600;
+  color: var(--h-primary);
+  letter-spacing: 0.01em;
+  white-space: nowrap;
+  -webkit-backdrop-filter: blur(12px);
+  backdrop-filter: blur(12px);
+  cursor: default;
+}
+
+/* Date / Time pill inputs */
+.h-datetime-row {
+  display: flex;
+  gap: 10px;
+}
+
+.h-glass-pill {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex: 1;
+  min-width: 0;
+  background: var(--h-glass-bg);
+  border: 1px solid var(--h-glass-border);
+  border-radius: 9999px;
+  padding: 9px 16px;
+  cursor: pointer;
+  -webkit-backdrop-filter: blur(12px);
+  backdrop-filter: blur(12px);
+  transition: background var(--transition), border-color var(--transition);
+  -webkit-tap-highlight-color: transparent;
+}
+
+.h-glass-pill:focus-within {
+  border-color: var(--h-glass-border-hi);
+  background: var(--h-glass-bg-hover);
+}
+
+.h-pill-icon {
+  font-size: 0.875rem;
+  line-height: 1;
+  flex-shrink: 0;
+  pointer-events: none;
+}
+
+.h-pill-input {
+  -webkit-appearance: none;
+  appearance: none;
+  background: transparent;
+  border: none;
+  outline: none;
+  color: var(--text-primary);
+  font-size: 0.8125rem;
+  font-weight: 500;
+  font-family: inherit;
+  width: 100%;
+  min-width: 0;
+  cursor: pointer;
+  padding: 0;
+  line-height: 1;
+}
+
+/* Tint the native calendar/clock icon to match the theme */
+.h-pill-input::-webkit-calendar-picker-indicator {
+  opacity: 0.45;
+  filter: invert(1);
+  cursor: pointer;
+  margin-left: 2px;
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   SECTION wrapper — shared padding / header for type + subtype
+   ═══════════════════════════════════════════════════════════════ */
+
+.h-section {
+  padding: 10px var(--h-section-gap) 0;
+}
+
+.h-section-hdr {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 12px;
+}
+
+.h-section-title {
+  font-size: 0.6875rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.09em;
+  color: var(--h-muted);
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   TYPE CARDS  —  override existing .type-card rules inside
+   #view-home with the Stitch glassmorphism aesthetic
+   ═══════════════════════════════════════════════════════════════ */
+
+/* Container grid */
+#view-home .type-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(86px, 1fr));
+  gap: 10px;
+  padding: 0;          /* h-section already supplies horizontal padding */
+}
+
+/* Individual card */
+#view-home .type-card {
+  background: var(--h-glass-bg);
+  border: 1px solid var(--h-glass-border);
+  border-radius: 16px;
+  padding: 16px 8px 14px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  cursor: pointer;
+  text-align: center;
+  min-height: 90px;
+  -webkit-backdrop-filter: blur(12px);
+  backdrop-filter: blur(12px);
+  transition: background var(--transition), border-color var(--transition),
+              transform 0.15s ease, box-shadow var(--transition);
+  -webkit-tap-highlight-color: transparent;
+  user-select: none;
+  /* reset styles.css border-radius / box-shadow overrides */
+  box-shadow: none;
+}
+
+#view-home .type-card:hover {
+  background: var(--h-glass-bg-hover);
+  border-color: rgba(208, 188, 255, 0.2);
+}
+
+#view-home .type-card:active {
+  transform: scale(0.94);
+}
+
+/* Selected state: border + soft glow in the card's own colour */
+#view-home .type-card.selected {
+  background: color-mix(in srgb, var(--card-color, var(--h-primary)) 13%, transparent);
+  border-color: var(--card-color, var(--h-primary));
+  box-shadow: 0 0 18px -5px color-mix(in srgb, var(--card-color, var(--h-primary)) 55%, transparent);
+}
+
+#view-home .type-card-emoji {
+  font-size: 1.875rem;
+  line-height: 1;
+  display: block;
+  margin-bottom: 0;
+}
+
+#view-home .type-card-name {
+  font-size: 0.6875rem;
+  font-weight: 600;
+  color: var(--text-secondary);
+  line-height: 1.25;
+  letter-spacing: 0.01em;
+}
+
+#view-home .type-card.selected .type-card-name {
+  color: var(--text-primary);
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   SUBTYPE SECTION  —  override hidden/visible defaults
+   ═══════════════════════════════════════════════════════════════ */
+
+#view-home .subtype-section {
+  display: none;
+  flex-direction: column;
+  padding: 14px var(--h-section-gap) 0;
+}
+
+#view-home .subtype-section.visible {
+  display: flex;
+}
+
+.h-subtype-hdr {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 12px;
+}
+
+.h-optional-tag {
+  font-size: 0.6875rem;
+  color: var(--h-muted);
+  font-weight: 400;
+  letter-spacing: 0;
+  text-transform: none;
+}
+
+/* Pills container */
+#view-home .subtype-pills {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+/* Individual pill */
+#view-home .subtype-pill {
+  -webkit-appearance: none;
+  appearance: none;
+  background: var(--h-glass-bg);
+  border: 1px solid var(--h-glass-border);
+  border-radius: 9999px;
+  padding: 7px 16px;
+  font-size: 0.8125rem;
+  font-weight: 500;
+  color: var(--text-secondary);
+  cursor: pointer;
+  font-family: inherit;
+  transition: background var(--transition), border-color var(--transition), color var(--transition);
+  -webkit-tap-highlight-color: transparent;
+}
+
+#view-home .subtype-pill:hover {
+  background: var(--h-glass-bg-hover);
+}
+
+#view-home .subtype-pill.selected {
+  color: var(--pill-color, var(--h-primary));
+  border-color: var(--pill-color, var(--h-primary));
+  background: color-mix(in srgb, var(--pill-color, var(--h-primary)) 12%, transparent);
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   WORKOUT PLAN ROW
+   ═══════════════════════════════════════════════════════════════ */
+
+.h-plan-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 14px var(--h-section-gap) 0;
+}
+
+.h-plan-icon {
+  font-size: 1rem;
+  line-height: 1;
+  flex-shrink: 0;
+}
+
+.h-plan-label {
+  font-size: 0.875rem;
+  color: var(--h-muted);
+  flex-shrink: 0;
+}
+
+/* The select already gets .form-select .form-select--compact from styles.css */
+
+/* ═══════════════════════════════════════════════════════════════
+   START SESSION BUTTON
+   ═══════════════════════════════════════════════════════════════ */
+
+.h-start-wrap {
+  padding: 20px var(--h-section-gap) 8px;
+}
+
+/* Override the existing .btn-primary inside home view */
+#view-home .h-btn-start {
+  width: 100%;
+  border: none;
+  border-radius: 9999px;
+  padding: 16px 24px;
+  font-size: 1rem;
+  font-weight: 700;
+  font-family: 'Sora', inherit;
+  letter-spacing: 0.02em;
+  cursor: pointer;
+  transition: opacity var(--transition), transform 0.15s ease,
+              box-shadow var(--transition), background var(--transition);
+  -webkit-tap-highlight-color: transparent;
+  color: #fff;
+}
+
+/* Disabled: glass pill look */
+#view-home .h-btn-start:disabled {
+  background: var(--h-glass-bg) !important;
+  color: var(--h-muted);
+  border: 1px solid var(--h-glass-border);
+  box-shadow: none;
+  cursor: default;
+}
+
+/* Enabled: JS will apply type.color as inline style — just add glow */
+#view-home .h-btn-start:not(:disabled) {
+  box-shadow: 0 4px 20px -4px var(--h-primary-glow);
+}
+
+#view-home .h-btn-start:not(:disabled):hover {
+  opacity: 0.9;
+  box-shadow: 0 6px 24px -4px var(--h-primary-glow);
+}
+
+#view-home .h-btn-start:not(:disabled):active {
+  transform: scale(0.97);
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   RESPONSIVE TWEAKS
+   ═══════════════════════════════════════════════════════════════ */
+
+@media (min-width: 420px) {
+  #view-home .type-grid {
+    grid-template-columns: repeat(auto-fill, minmax(96px, 1fr));
+  }
+}
+
+@media (min-width: 600px) {
+  #view-home .type-grid {
+    grid-template-columns: repeat(auto-fill, minmax(110px, 1fr));
+  }
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   BOTTOM NAV — Stitch glassmorphism  (global component)
+   Uses #bottom-nav specificity to override styles.css rules.
+   ═══════════════════════════════════════════════════════════════ */
+
+/* Container: frosted glass + rounded top corners */
+#bottom-nav {
+  background: rgba(17, 19, 27, 0.82);
+  -webkit-backdrop-filter: blur(24px);
+  backdrop-filter: blur(24px);
+  border-top: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 20px 20px 0 0;
+  padding: 0 8px;
+}
+
+/* Buttons: pill shape, scale on tap */
+#bottom-nav button {
+  border-radius: 12px;
+  padding: 6px 12px;
+  color: rgba(226, 225, 238, 0.45);
+  gap: 3px;
+  transition: color 0.2s ease, background 0.2s ease, transform 0.15s ease;
+  -webkit-tap-highlight-color: transparent;
+}
+
+#bottom-nav button:hover {
+  color: rgba(226, 225, 238, 0.75);
+}
+
+#bottom-nav button:active {
+  transform: scale(0.88);
+}
+
+/* Material Symbols icon: outlined by default */
+#bottom-nav button .nav-icon {
+  font-size: 1.375rem;
+  font-family: 'Material Symbols Outlined';
+  font-variation-settings: 'FILL' 0, 'wght' 300, 'GRAD' 0, 'opsz' 24;
+  transition: font-variation-settings 0.2s ease;
+  line-height: 1;
+}
+
+/* Active tab: tinted pill + primary glow + filled icon */
+#bottom-nav button.nav--active {
+  color: #d0bcff;
+  background: rgba(208, 188, 255, 0.14);
+  box-shadow: 0 0 18px -4px rgba(208, 188, 255, 0.4);
+}
+
+#bottom-nav button.nav--active .nav-icon {
+  font-variation-settings: 'FILL' 1, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+}
+
+/* Hidden state (active session): preserve existing slide-down */
+#bottom-nav.hidden {
+  transform: translateX(-50%) translateY(100%);
+  opacity: 0;
+  pointer-events: none;
+}
