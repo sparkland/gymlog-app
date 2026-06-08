@@ -629,6 +629,13 @@ function navigate(viewName) {
     hamburger.classList.toggle('hamburger-hidden', NO_HAMBURGER_VIEWS.has(viewName));
   }
 
+  // Page logo: show beside hamburger on sidebar-accessible views (not home/settings/session/onboarding)
+  const LOGO_VIEWS = new Set(['exercises', 'training', 'profile', 'nutrition', 'insight']);
+  const pageLogo = document.getElementById('page-logo');
+  if (pageLogo) {
+    pageLogo.classList.toggle('page-logo--hidden', !LOGO_VIEWS.has(viewName));
+  }
+
   state.currentView = viewName;
 
   const renderers = {
