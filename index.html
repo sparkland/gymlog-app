@@ -50,7 +50,7 @@
         <span class="sidebar-item-label">Profile</span>
       </button>
     </nav>
-    <div id="sidebar-footer">GymLog v1.0</div>
+    <div id="sidebar-footer">GymLog v2.0 alpha</div>
   </div>
 
   <!-- ═══════════════ ONBOARDING VIEW ═══════════════ -->
@@ -671,7 +671,7 @@
     <div class="about-hero">
       <div class="about-hero-icon">🏋️</div>
       <h2 class="about-app-name">Gym<span>Log</span></h2>
-      <p class="about-version">version 1.8</p>
+      <p class="about-version">version 2.0 alpha</p>
     </div>
     <div class="settings-section">
       <div class="settings-section-label">Creator</div>
@@ -692,7 +692,27 @@
       <div class="settings-card release-notes">
         <div class="release-version">
           <div class="release-version-header">
-            <span class="release-badge">v1.8</span>
+            <span class="release-badge">v2.0 α</span>
+            <span class="release-version-title">Navigation, Train &amp; Profile</span>
+          </div>
+          <ul class="release-list">
+            <li>Added a global <strong>sidebar drawer</strong> accessible via the ☰ hamburger button — navigate between Exercise, Train, Profile, and future sections without leaving your current view</li>
+            <li>The GymLog wordmark appears beside the hamburger on all sidebar-accessible views, keeping the app identity consistent throughout</li>
+            <li>Added the <strong>Train</strong> section — start a Bulk, Cut, or Neither training phase with an optional target duration; the active phase card tracks the current day and shows a progress indicator against your goal</li>
+            <li>Log your body weight within an active phase; each entry shows an up/down delta against the previous weigh-in so you can track direction at a glance</li>
+            <li>Ending a phase archives it to a phase history list showing start and end dates, total duration, and the weight change over the phase</li>
+            <li>Added the <strong>Profile</strong> section — edit your name, set your height, select up to 12 training goals (Hypertrophy, Strength, Endurance, Fat Loss, and more), and view live stats: Total Workouts, Weekly Streak, and PRs Achieved</li>
+            <li>Tap your profile avatar to upload a photo (JPEG, PNG, WebP, GIF, or HEIC) — displayed in both the Profile page and the sidebar header; falls back to initials when no photo is set</li>
+            <li>Added <strong>Pause / Resume</strong> button during active sessions — freezes the timer without ending the session so rest periods don't inflate your logged duration</li>
+            <li>Added a <strong>Cancel Session</strong> confirmation modal to prevent accidentally discarding a session in progress</li>
+            <li>Added a <strong>finish guard</strong> — finishing a session with no exercises logged now asks you to confirm before saving an empty record</li>
+            <li>Added <strong>Export as Workout Plan</strong> in Reports — expand any session's exercise log and tap the button to open the plan editor pre-filled with those exercises, ready to save as a reusable plan</li>
+            <li>Added <strong>Increase Plates</strong> option in Progression Targets — when using plates mode the recommendation can suggest adding a full plate rather than a kg/lbs increment</li>
+          </ul>
+        </div>
+        <div class="release-version">
+          <div class="release-version-header">
+            <span class="release-badge release-badge--muted">v1.8</span>
             <span class="release-version-title">Interactive Feature Guides</span>
           </div>
           <ul class="release-list">
