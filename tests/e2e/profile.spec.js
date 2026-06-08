@@ -21,8 +21,8 @@ test.describe('Profile page', () => {
     await expect(page.locator('#bottom-nav')).toHaveClass(/hidden/);
   });
 
-  test('← Home button returns to Home view and restores bottom nav', async ({ page }) => {
-    await page.locator('#btn-back-profile').click();
+  test('navigating to Home via sidebar restores bottom nav', async ({ page }) => {
+    await navigateViaSidebar(page, 'home');
     await expect(page.locator('#view-home')).toHaveClass(/view--active/);
     await expect(page.locator('#bottom-nav')).not.toHaveClass(/hidden/);
   });
