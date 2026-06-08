@@ -2820,6 +2820,14 @@ input:disabled {
   font-weight: 700;
   letter-spacing: -0.02em;
   flex-shrink: 0;
+  overflow: hidden;
+}
+#sidebar-avatar img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  border-radius: 50%;
+  display: block;
 }
 
 #sidebar-name {
@@ -3130,6 +3138,32 @@ input:disabled {
   padding: 20px 16px 8px;
   gap: 10px;
 }
+/* Clickable wrapper around the avatar */
+.profile-avatar-wrapper {
+  position: relative;
+  display: inline-flex;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+  border-radius: 50%;
+}
+.profile-avatar-wrapper:hover .profile-avatar-edit-overlay,
+.profile-avatar-wrapper:focus-within .profile-avatar-edit-overlay {
+  opacity: 1;
+}
+.profile-avatar-edit-overlay {
+  position: absolute;
+  inset: 0;
+  border-radius: 50%;
+  background: rgba(0, 0, 0, 0.52);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.375rem;
+  opacity: 0;
+  transition: opacity var(--transition);
+  pointer-events: none;
+}
+
 .profile-avatar-lg {
   width: 72px;
   height: 72px;
@@ -3142,6 +3176,14 @@ input:disabled {
   justify-content: center;
   font-size: 1.75rem;
   font-weight: 700;
+  overflow: hidden;  /* clips the <img> to the circle */
+}
+.profile-avatar-lg img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  border-radius: 50%;
+  display: block;
 }
 .profile-name-input {
   text-align: center;
