@@ -29,6 +29,7 @@ const DEFAULT_PROGRESSION_SETTINGS = {
   targetRepsMax:  12,   // upper bound (and sole trigger when useRepRange is false)
   targetSets:     3,    // minimum qualifying sets required per session
   increaseAmount: 2.5,  // added to reference weight; unit matches user's weight unit
+  increasePlates: false, // when true, recommends +1 plate for plate-tracked exercises
 };
 
 const COLOR_PRESETS = [
@@ -222,7 +223,8 @@ const Storage = {
     if (typeof s.targetRepsMin  === 'undefined') s.targetRepsMin  = DEFAULT_PROGRESSION_SETTINGS.targetRepsMin;
     if (typeof s.targetRepsMax  === 'undefined') s.targetRepsMax  = DEFAULT_PROGRESSION_SETTINGS.targetRepsMax;
     if (typeof s.targetSets     === 'undefined') s.targetSets     = DEFAULT_PROGRESSION_SETTINGS.targetSets;
-    if (typeof s.increaseAmount === 'undefined') s.increaseAmount = DEFAULT_PROGRESSION_SETTINGS.increaseAmount;
+    if (typeof s.increaseAmount  === 'undefined') s.increaseAmount  = DEFAULT_PROGRESSION_SETTINGS.increaseAmount;
+    if (typeof s.increasePlates  === 'undefined') s.increasePlates  = false;
     return s;
   },
   saveProgressionSettings(s) {
@@ -579,6 +581,19 @@ function navigate(viewName) {
 // ─── Timer ────────────────────────────────────────────────────
 function startTimer() {
   stopTimer();
+  const active = Storage.getActive();
+  // If session is currently paused, just render the frozen display — don't tick
+  if (active?.pausedAt) {
+    const paused  = active.pausedDuration || 0;
+    const elapsed = Math.floor((active.pausedAt - active.startTimestamp - paused) / 1000);
+    const el = document.getElementById('timer-display');
+    if (el) el.textContent = formatDuration(Math.max(0, elapsed));
+    const btn = document.getElementById('btn-pause-session');
+    if (btn) btn.textContent = 'Resume Session';
+    return;
+  }
+  const btn = document.getElementById('btn-pause-session');
+  if (btn) btn.textContent = 'Pause Session';
   state.timerInterval = setInterval(tickTimer, 500);
   tickTimer();
 }
@@ -594,8 +609,9 @@ function tickTimer() {
   const active = Storage.getActive();
   const el = document.getElementById('timer-display');
   if (!active || !el) { stopTimer(); return; }
-  const elapsed = Math.floor((Date.now() - active.startTimestamp) / 1000);
-  el.textContent = formatDuration(elapsed);
+  const paused   = active.pausedDuration || 0;
+  const elapsed  = Math.floor((Date.now() - active.startTimestamp - paused) / 1000);
+  el.textContent = formatDuration(Math.max(0, elapsed));
 }
 
 // ─── Render: Home ─────────────────────────────────────────────
@@ -1158,6 +1174,47 @@ function renderExerciseSummaryDetail(session, detailEl) {
       }).join('')}
     </div>`;
   }).join('');
+
+  // Export as Workout Plan button (only when there are exercises)
+  if (exercises.length > 0) {
+    const exportBtn = document.createElement('button');
+    exportBtn.className = 'btn-secondary btn-export-as-plan';
+    exportBtn.textContent = '💾 Export as Workout Plan';
+    exportBtn.style.cssText = 'width:100%;margin-top:12px';
+    exportBtn.addEventListener('click', () => exportSessionAsPlan(session));
+    detailEl.appendChild(exportBtn);
+  }
+}
+
+function exportSessionAsPlan(session) {
+  const planName = session.sessionSubtypeName
+    ? `${session.sessionTypeName} — ${session.sessionSubtypeName}`
+    : session.sessionTypeName;
+  const planEmoji = session.sessionTypeEmoji || '💪';
+
+  // Deduplicate by exerciseId and strip set data
+  const seen = new Set();
+  const planExercises = (session.exercises || [])
+    .filter(ex => { if (seen.has(ex.exerciseId)) return false; seen.add(ex.exerciseId); return true; })
+    .map(ex => ({ exerciseId: ex.exerciseId, exerciseName: ex.exerciseName, exerciseType: ex.exerciseType }));
+
+  // Pre-populate plan state
+  state.editingPlanId    = null;
+  state.editingPlan      = { name: planName, emoji: planEmoji, exercises: planExercises };
+  state.editingMode      = 'plan';
+  state.exercisesSegment = 'workout-plans';
+
+  // Navigate to Exercises > Plans (renderExercises picks up exercisesSegment)
+  navigate('exercises');
+
+  // Open the plan modal pre-filled
+  document.getElementById('plan-modal-title').textContent = 'New Workout Plan';
+  document.getElementById('plan-name').value  = planName;
+  document.getElementById('plan-emoji').value = planEmoji;
+  renderPlanExercises();
+  document.getElementById('modal-add-edit-plan').classList.add('open');
+  document.getElementById('modal-backdrop').classList.add('open');
+  document.getElementById('plan-name').focus();
 }
 
 // ─── Render: Settings ────────────────────────────────────────
@@ -1233,8 +1290,9 @@ function renderProgressionSettings() {
   document.getElementById('pt-reps-min').value           = s.targetRepsMin;
   document.getElementById('pt-reps-max').value           = s.targetRepsMax;
   document.getElementById('pt-sets').value               = s.targetSets;
-  document.getElementById('pt-increase').value           = s.increaseAmount;
-  document.getElementById('pt-increase-label').textContent = `Increase By (${units.weight})`;
+  document.getElementById('pt-increase').value              = s.increaseAmount;
+  document.getElementById('pt-increase-label').textContent  = `Increase By (${units.weight})`;
+  document.getElementById('pt-increase-plates').checked     = s.increasePlates === true;
   applyRepRangeState(s.useRepRange === true);
 }
 
@@ -1635,7 +1693,7 @@ function getProgressionRecommendation(exerciseId) {
   const ex = (Storage.getExercises() || []).find(e => e.id === exerciseId);
   if (!ex || ex.type !== 'strength' || !ex.trackWeight) return null;
 
-  const { method, useRepRange, targetRepsMin, targetRepsMax, targetSets, increaseAmount } = settings;
+  const { method, useRepRange, targetRepsMin, targetRepsMax, targetSets, increaseAmount, increasePlates } = settings;
 
   // All sessions containing this exercise, most-recent first
   const relevantSessions = Storage.getSessions()
@@ -1680,7 +1738,7 @@ function getProgressionRecommendation(exerciseId) {
   }
 
   // Builds a human-readable detail string for the info popup
-  function buildDetailText(ref, qualifyingSessions) {
+  function buildDetailText(ref, qualifyingSessions, increase) {
     const unitLabel  = fmtWeight(ref.referenceValue, ref.weightUnit);
     const sessionEx0 = (qualifyingSessions[0].exercises || []).find(e => e.exerciseId === exerciseId);
     const qualSets0  = sessionEx0.sets.filter(setQualifies);
@@ -1700,18 +1758,21 @@ function getProgressionRecommendation(exerciseId) {
     const d2 = fmtDate(qualifyingSessions[0].date);
     return `2-for-2 Rule — you hit your target of ${targetSets} set${targetSets !== 1 ? 's' : ''} `
       + `at ${repTarget} in both of your last two sessions (${d1} and ${d2}). `
-      + `Two consecutive sessions confirms it's time to add ${fmtWeight(increaseAmount, ref.weightUnit)}!`;
+      + `Two consecutive sessions confirms it's time to add ${fmtWeight(increase, ref.weightUnit)}!`;
   }
 
   if (method === 'double-progression') {
     if (!sessionMeetsCriteria(mostRecent)) return null;
     const ref = getReferenceWeight(mostRecent);
     if (!ref) return null;
+    const isPlates = ref.weightUnit === 'plates';
+    if (isPlates && !increasePlates) return null;       // plates progression disabled
+    const increase = isPlates ? 1 : increaseAmount;
     return {
-      recommendedValue: ref.referenceValue + increaseAmount,
+      recommendedValue: ref.referenceValue + increase,
       weightUnit:       ref.weightUnit,
       method,
-      detailText:       buildDetailText(ref, [mostRecent]),
+      detailText:       buildDetailText(ref, [mostRecent], increase),
     };
   }
 
@@ -1720,11 +1781,14 @@ function getProgressionRecommendation(exerciseId) {
     if (!sessionMeetsCriteria(mostRecent) || !sessionMeetsCriteria(relevantSessions[1])) return null;
     const ref = getReferenceWeight(mostRecent);
     if (!ref) return null;
+    const isPlates = ref.weightUnit === 'plates';
+    if (isPlates && !increasePlates) return null;       // plates progression disabled
+    const increase = isPlates ? 1 : increaseAmount;
     return {
-      recommendedValue: ref.referenceValue + increaseAmount,
+      recommendedValue: ref.referenceValue + increase,
       weightUnit:       ref.weightUnit,
       method,
-      detailText:       buildDetailText(ref, [mostRecent, relevantSessions[1]]),
+      detailText:       buildDetailText(ref, [mostRecent, relevantSessions[1]], increase),
     };
   }
 
@@ -2478,7 +2542,13 @@ function handleFinishSession() {
     document.getElementById('modal-finish-confirm').classList.add('open');
     document.getElementById('modal-backdrop').classList.add('open');
   } else {
-    doFinishSession();
+    // No exercises logged — warn before finishing
+    document.getElementById('finish-confirm-summary').innerHTML = `
+      <p class="finish-confirm-stat">⚠️ No exercises logged</p>
+      <p class="finish-confirm-subtext">You haven't added any exercises to this session. Are you sure you want to finish and save it?</p>
+    `;
+    document.getElementById('modal-finish-confirm').classList.add('open');
+    document.getElementById('modal-backdrop').classList.add('open');
   }
 }
 
@@ -2487,7 +2557,10 @@ function doFinishSession() {
   if (!active) return;
 
   const endTs    = Date.now();
-  const duration = Math.floor((endTs - active.startTimestamp) / 1000);
+  // If finishing while paused, count up to the pause point not to now
+  const pausedAt  = active.pausedAt || null;
+  const effectiveEnd = pausedAt ? pausedAt : endTs;
+  const duration  = Math.floor((effectiveEnd - active.startTimestamp - (active.pausedDuration || 0)) / 1000);
   const endTime  = new Date(endTs).toTimeString().slice(0, 5);
   const types    = Storage.getTypes() || [];
   const type     = types.find(t => t.id === active.sessionTypeId) || { name:'Session', emoji:'🏋️' };
@@ -2538,7 +2611,62 @@ function closeProgressionInfoModal() {
 }
 
 function handleCancelSession() {
+  const active = Storage.getActive();
+  if (!active) return;
+
+  const exercises = active.exercises || [];
+  const totalSets = exercises.reduce((sum, ex) => sum + (ex.sets?.length || 0), 0);
+
+  let summaryHtml;
+  if (totalSets > 0) {
+    const exLine  = `${exercises.length} exercise${exercises.length !== 1 ? 's' : ''}`;
+    const setLine = `${totalSets} set${totalSets !== 1 ? 's' : ''}`;
+    summaryHtml = `
+      <p class="finish-confirm-stat">
+        You've logged <strong>${exLine}</strong> and <strong>${setLine}</strong> this session.
+      </p>
+      <p class="finish-confirm-subtext">Cancelling will permanently discard all of this data.</p>
+    `;
+  } else {
+    summaryHtml = `<p class="finish-confirm-subtext">This session has no logged sets. Are you sure you want to discard it?</p>`;
+  }
+
+  document.getElementById('cancel-confirm-summary').innerHTML = summaryHtml;
+  document.getElementById('modal-cancel-confirm').classList.add('open');
+  document.getElementById('modal-backdrop').classList.add('open');
+}
+
+function doCancelSession() {
+  closeCancelConfirmModal();
   endSession();
+}
+
+function closeCancelConfirmModal() {
+  document.getElementById('modal-cancel-confirm').classList.remove('open');
+  document.getElementById('modal-backdrop').classList.remove('open');
+}
+
+function handlePauseResumeSession() {
+  const active = Storage.getActive();
+  if (!active) return;
+  const btn = document.getElementById('btn-pause-session');
+
+  if (!active.pausedAt) {
+    // ── Pause ──
+    active.pausedAt = Date.now();
+    Storage.saveActive(active);
+    stopTimer();
+    if (btn) btn.textContent = 'Resume Session';
+  } else {
+    // ── Resume ──
+    const pausedFor = Date.now() - active.pausedAt;
+    active.pausedDuration = (active.pausedDuration || 0) + pausedFor;
+    active.pausedAt = null;
+    Storage.saveActive(active);
+    if (btn) btn.textContent = 'Pause Session';
+    state.timerInterval = setInterval(tickTimer, 500);
+    tickTimer();
+  }
 }
 
 function endSession() {
@@ -3360,9 +3488,12 @@ function wireEvents() {
   });
 
   document.getElementById('btn-finish-session').addEventListener('click', handleFinishSession);
+  document.getElementById('btn-pause-session').addEventListener('click', handlePauseResumeSession);
   document.getElementById('btn-cancel-session').addEventListener('click', handleCancelSession);
   document.getElementById('btn-finish-confirm').addEventListener('click', doFinishSession);
   document.getElementById('btn-finish-keep-going').addEventListener('click', closeFinishConfirmModal);
+  document.getElementById('btn-cancel-confirm').addEventListener('click', doCancelSession);
+  document.getElementById('btn-cancel-keep-going').addEventListener('click', closeCancelConfirmModal);
 
   // Progression info button — delegated since it's rendered dynamically
   document.getElementById('modal-log-set').addEventListener('click', e => {
@@ -3393,6 +3524,7 @@ function wireEvents() {
     closeAssignPlanModal();
     closeLoadPlanModal();
     closeFinishConfirmModal();
+    closeCancelConfirmModal();
     closeProgressionInfoModal();
   });
 
@@ -3769,6 +3901,12 @@ function wireEvents() {
     // Cannot go below current min reps
     if (val < s.targetRepsMin) { e.target.value = s.targetRepsMin; return; }
     s.targetRepsMax = val;
+    Storage.saveProgressionSettings(s);
+  });
+
+  document.getElementById('pt-increase-plates').addEventListener('change', e => {
+    const s = Storage.getProgressionSettings();
+    s.increasePlates = e.target.checked;
     Storage.saveProgressionSettings(s);
   });
 }

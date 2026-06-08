@@ -150,6 +150,9 @@
         <button class="btn-primary" id="btn-finish-session">
           Finish Session
         </button>
+        <button class="btn-secondary" id="btn-pause-session">
+          Pause Session
+        </button>
         <button class="btn-secondary btn-danger" id="btn-cancel-session">
           Cancel Session
         </button>
@@ -554,6 +557,16 @@
             </div>
           </div>
         </div>
+        <label class="radio-row" style="border-top:1px solid var(--border);border-bottom:none">
+          <span class="radio-row-label">
+            Increase plate weight
+            <span class="radio-row-sub">When criteria are met, recommends +1 plate above your last session for exercises tracked in Plates mode. Always increases by exactly 1 plate.</span>
+          </span>
+          <div class="toggle-switch">
+            <input type="checkbox" id="pt-increase-plates">
+            <span class="toggle-thumb"></span>
+          </div>
+        </label>
       </div>
     </div>
     <div class="settings-section">
@@ -910,6 +923,17 @@
     <div class="modal-actions" style="margin-top:20px">
       <button class="btn-primary" id="btn-finish-confirm">Finish Session</button>
       <button class="btn-secondary" id="btn-finish-keep-going">Keep Going</button>
+    </div>
+  </div>
+
+  <!-- ═══════════════ CANCEL CONFIRM MODAL ═══════════════ -->
+  <div class="modal" id="modal-cancel-confirm">
+    <div class="modal-handle"></div>
+    <h2>Cancel Session?</h2>
+    <div class="finish-confirm-summary" id="cancel-confirm-summary"></div>
+    <div class="modal-actions" style="margin-top:20px">
+      <button class="btn-secondary btn-danger" id="btn-cancel-confirm">Discard Session</button>
+      <button class="btn-primary" id="btn-cancel-keep-going">Keep Going</button>
     </div>
   </div>
 

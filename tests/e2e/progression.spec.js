@@ -46,6 +46,7 @@ async function seedProgressionSettings(page, overrides = {}) {
     targetRepsMax:  12,
     targetSets:     3,
     increaseAmount: 2.5,
+    increasePlates: false,
   };
   await page.addInitScript(({ key, value }) => {
     localStorage.setItem(key, JSON.stringify(value));
@@ -366,6 +367,95 @@ test.describe('Progression Targets', () => {
       // Should describe the range rather than just "12+ reps"
       await expect(page.locator('#progression-info-detail')).toContainText('8–12');
       await expect(page.locator('#progression-info-detail')).toContainText('rep range');
+    });
+
+  });
+
+  // ── Plate Weight Progression ─────────────────────────────────────────────────
+
+  test.describe('Plate Weight Progression', () => {
+
+    /** 3 sets at 5 plates × 12 reps — qualifies under default rep/set targets. */
+    const QUALIFYING_PLATES_SETS = [
+      { reps: 12, weight: 5, weightUnit: 'plates' },
+      { reps: 12, weight: 5, weightUnit: 'plates' },
+      { reps: 12, weight: 5, weightUnit: 'plates' },
+    ];
+
+    test('banner appears with +1 plate recommendation (Double Progression)', async ({ page }) => {
+      await skipOnboarding(page);
+      await seedProgressionSettings(page, { method: 'double-progression', increasePlates: true });
+      await seedSessions(page, [
+        makeBenchSession('s1', '2026-05-22', QUALIFYING_PLATES_SETS),
+      ]);
+
+      await page.goto('/');
+      await startSession(page, 'CrossFit');
+      await addExerciseToSession(page, 'Bench Press');
+      await openLogSetModal(page);
+
+      const hint = page.locator('#set-progression-hint');
+      await expect(hint).toBeVisible();
+      await expect(hint).toContainText('Double Progression');
+      // Reference was 5 plates → recommendation must be 5 + 1 = 6
+      await expect(hint).toContainText('6');
+      await expect(page.locator('#set-weight')).toHaveValue('6');
+    });
+
+    test('banner does NOT appear for plates exercises when increasePlates is disabled', async ({ page }) => {
+      await skipOnboarding(page);
+      // increasePlates defaults to false — plates exercises skipped entirely
+      await seedProgressionSettings(page, { method: 'double-progression' });
+      await seedSessions(page, [
+        makeBenchSession('s1', '2026-05-22', QUALIFYING_PLATES_SETS),
+      ]);
+
+      await page.goto('/');
+      await startSession(page, 'CrossFit');
+      await addExerciseToSession(page, 'Bench Press');
+      await openLogSetModal(page);
+
+      await expect(page.locator('#set-progression-hint')).not.toBeVisible();
+    });
+
+    test('banner appears with +1 plate after two consecutive qualifying sessions (2-for-2)', async ({ page }) => {
+      await skipOnboarding(page);
+      await seedProgressionSettings(page, { method: '2-for-2', increasePlates: true });
+      await seedSessions(page, [
+        makeBenchSession('s1', '2026-05-20', QUALIFYING_PLATES_SETS), // older
+        makeBenchSession('s2', '2026-05-22', QUALIFYING_PLATES_SETS), // most recent
+      ]);
+
+      await page.goto('/');
+      await startSession(page, 'CrossFit');
+      await addExerciseToSession(page, 'Bench Press');
+      await openLogSetModal(page);
+
+      const hint = page.locator('#set-progression-hint');
+      await expect(hint).toBeVisible();
+      await expect(hint).toContainText('2-for-2');
+      await expect(hint).toContainText('6');
+      await expect(page.locator('#set-weight')).toHaveValue('6');
+    });
+
+    test('kg exercises still receive their configured increase when increasePlates is enabled', async ({ page }) => {
+      // Regression guard: enabling increasePlates must not affect kg recommendations
+      await skipOnboarding(page);
+      await seedProgressionSettings(page, { method: 'double-progression', increasePlates: true });
+      await seedSessions(page, [
+        makeBenchSession('s1', '2026-05-22', QUALIFYING_SETS), // kg sets from the shared constant
+      ]);
+
+      await page.goto('/');
+      await startSession(page, 'CrossFit');
+      await addExerciseToSession(page, 'Bench Press');
+      await openLogSetModal(page);
+
+      const hint = page.locator('#set-progression-hint');
+      await expect(hint).toBeVisible();
+      // 60 kg + 2.5 kg increase = 62.5
+      await expect(hint).toContainText('62.5');
+      await expect(page.locator('#set-weight')).toHaveValue('62.5');
     });
 
   });
