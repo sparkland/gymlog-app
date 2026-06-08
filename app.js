@@ -4004,7 +4004,7 @@ function wireEvents() {
   document.getElementById('btn-save-start-phase').addEventListener('click', handleStartPhase);
   document.getElementById('btn-cancel-log-weight').addEventListener('click', closeLogWeightModal);
   document.getElementById('btn-save-log-weight').addEventListener('click', handleLogWeight);
-  document.getElementById('btn-back-training').addEventListener('click', () => navigate('home'));
+  // btn-back-training removed — navigation handled via sidebar
 
   // Phase type pills
   document.getElementById('phase-type-pills').addEventListener('click', e => {
@@ -4022,7 +4022,7 @@ function wireEvents() {
   });
 
   // ── Profile events ─────────────────────────────────────────
-  document.getElementById('btn-back-profile').addEventListener('click', () => navigate('home'));
+  // btn-back-profile removed — navigation handled via sidebar
   document.getElementById('btn-back-nutrition').addEventListener('click', () => navigate('home'));
   document.getElementById('btn-back-insight').addEventListener('click', () => navigate('home'));
 
