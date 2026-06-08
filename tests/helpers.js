@@ -4,12 +4,15 @@
  */
 
 const STORAGE_KEYS = {
-  USER_NAME: 'gym_user_name',
-  SESSIONS:  'gym_sessions',
-  ACTIVE:    'gym_active_session',
-  TYPES:     'gym_session_types',
-  EXERCISES: 'gym_exercises',
-  UNITS:     'gym_units',
+  USER_NAME:        'gym_user_name',
+  SESSIONS:         'gym_sessions',
+  ACTIVE:           'gym_active_session',
+  TYPES:            'gym_session_types',
+  EXERCISES:        'gym_exercises',
+  UNITS:            'gym_units',
+  TRAINING_PHASE:   'gym_training_phase',
+  TRAINING_HISTORY: 'gym_training_history',
+  PROFILE:          'gym_profile',
 };
 
 /**
@@ -114,6 +117,55 @@ async function addExerciseToSession(page, exerciseName = 'Pull-Up') {
   );
 }
 
+/**
+ * Open the sidebar drawer and wait for it to be open.
+ */
+async function openSidebar(page) {
+  await page.locator('#btn-hamburger').click();
+  await page.waitForFunction(() =>
+    document.getElementById('sidebar-drawer').classList.contains('open')
+  );
+}
+
+/**
+ * Close the sidebar by clicking the scrim and wait for it to close.
+ */
+async function closeSidebarViaScrim(page) {
+  await page.locator('#sidebar-scrim').click();
+  await page.waitForFunction(() =>
+    !document.getElementById('sidebar-drawer').classList.contains('open')
+  );
+}
+
+/**
+ * Navigate to a view via the sidebar.
+ */
+async function navigateViaSidebar(page, view) {
+  await openSidebar(page);
+  await page.locator(`.sidebar-item[data-view="${view}"]`).click();
+  await page.locator(`#view-${view}.view--active`).waitFor();
+}
+
+/**
+ * Wait for a modal to open (gains 'open' class).
+ */
+async function waitForModalOpen(page, id) {
+  await page.waitForFunction(
+    (modalId) => document.getElementById(modalId).classList.contains('open'),
+    id
+  );
+}
+
+/**
+ * Wait for a modal to close (loses 'open' class).
+ */
+async function waitForModalClosed(page, id) {
+  await page.waitForFunction(
+    (modalId) => !document.getElementById(modalId).classList.contains('open'),
+    id
+  );
+}
+
 module.exports = {
   STORAGE_KEYS,
   skipOnboarding,
@@ -123,4 +175,9 @@ module.exports = {
   selectSessionType,
   startSession,
   addExerciseToSession,
+  openSidebar,
+  closeSidebarViaScrim,
+  navigateViaSidebar,
+  waitForModalOpen,
+  waitForModalClosed,
 };
