@@ -172,6 +172,8 @@ test.describe('Session flow', () => {
   test('finishing a session saves the record and returns home', async ({ page }) => {
     await startSession(page);
     await page.locator('#btn-finish-session').click();
+    // "No exercises" guard modal — confirm finish
+    await page.locator('#btn-finish-confirm').click();
 
     await expect(page.locator('#view-home')).toHaveClass(/view--active/);
     await expect(page.locator('#bottom-nav')).not.toHaveClass(/hidden/);
@@ -187,6 +189,8 @@ test.describe('Session flow', () => {
   test('cancelling a session clears active and returns home', async ({ page }) => {
     await startSession(page);
     await page.locator('#btn-cancel-session').click();
+    // Cancel confirm modal — click Discard
+    await page.locator('#btn-cancel-confirm').click();
 
     await expect(page.locator('#view-home')).toHaveClass(/view--active/);
 

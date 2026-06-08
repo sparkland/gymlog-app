@@ -11,9 +11,46 @@
   <meta http-equiv="Expires" content="0">
   <title>GymLog</title>
   <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🏋️</text></svg>">
-  <link rel="stylesheet" href="styles.css?v=31">
+  <link rel="stylesheet" href="styles.css?v=32">
 </head>
 <body>
+
+  <!-- ═══════════════ HAMBURGER BUTTON ═══════════════ -->
+  <button id="btn-hamburger" aria-label="Open menu">☰</button>
+
+  <!-- ═══════════════ SIDEBAR SCRIM + DRAWER ═══════════════ -->
+  <div id="sidebar-scrim"></div>
+  <div id="sidebar-drawer">
+    <div id="sidebar-header">
+      <div id="sidebar-avatar"></div>
+      <span id="sidebar-name"></span>
+    </div>
+    <nav id="sidebar-nav">
+      <button class="sidebar-item" data-view="home">
+        <span class="sidebar-item-icon">🏋️</span>
+        <span class="sidebar-item-label">Exercise</span>
+      </button>
+      <button class="sidebar-item" data-view="training">
+        <span class="sidebar-item-icon">🏃</span>
+        <span class="sidebar-item-label">Training</span>
+      </button>
+      <button class="sidebar-item sidebar-item--disabled" data-view="nutrition">
+        <span class="sidebar-item-icon">🥗</span>
+        <span class="sidebar-item-label">Nutrition</span>
+        <span class="coming-soon-badge">Soon</span>
+      </button>
+      <button class="sidebar-item sidebar-item--disabled" data-view="insight">
+        <span class="sidebar-item-icon">💡</span>
+        <span class="sidebar-item-label">Insight</span>
+        <span class="coming-soon-badge">Soon</span>
+      </button>
+      <button class="sidebar-item" data-view="profile">
+        <span class="sidebar-item-icon">👤</span>
+        <span class="sidebar-item-label">Profile</span>
+      </button>
+    </nav>
+    <div id="sidebar-footer">GymLog v1.0</div>
+  </div>
 
   <!-- ═══════════════ ONBOARDING VIEW ═══════════════ -->
   <div id="view-onboarding" class="onboarding-view">
@@ -1299,10 +1336,198 @@
     </div>
   </div>
 
+  <!-- ═══════════════ TRAINING VIEW ═══════════════ -->
+  <div id="view-training" class="view view--full">
+    <div class="view-header">
+      <button class="btn-back" id="btn-back-training">← Home</button>
+      <h1>Training</h1>
+      <p>Bulk &amp; Cut phase tracker</p>
+    </div>
+    <div id="training-content">
+      <!-- Rendered by renderTraining() -->
+    </div>
+  </div>
+
+  <!-- ═══════════════ NUTRITION VIEW ═══════════════ -->
+  <div id="view-nutrition" class="view view--full">
+    <div class="view-header">
+      <button class="btn-back" id="btn-back-nutrition">← Home</button>
+      <h1>Nutrition</h1>
+      <p>Track your food intake</p>
+    </div>
+    <div class="coming-soon-card">
+      <div class="coming-soon-icon">🥗</div>
+      <h2>Coming Soon</h2>
+      <p>Nutrition tracking is on the roadmap for a future update. Stay tuned!</p>
+    </div>
+  </div>
+
+  <!-- ═══════════════ INSIGHT VIEW ═══════════════ -->
+  <div id="view-insight" class="view view--full">
+    <div class="view-header">
+      <button class="btn-back" id="btn-back-insight">← Home</button>
+      <h1>Insight</h1>
+      <p>Advanced analytics &amp; trends</p>
+    </div>
+    <div class="coming-soon-card">
+      <div class="coming-soon-icon">💡</div>
+      <h2>Coming Soon</h2>
+      <p>In-depth training insights and progress analytics are coming in a future update.</p>
+    </div>
+  </div>
+
+  <!-- ═══════════════ PROFILE VIEW ═══════════════ -->
+  <div id="view-profile" class="view view--full">
+    <div class="view-header">
+      <button class="btn-back" id="btn-back-profile">← Home</button>
+      <h1>Profile</h1>
+      <p>Your details &amp; goals</p>
+    </div>
+
+    <!-- Avatar + name -->
+    <div class="profile-avatar-section">
+      <div class="profile-avatar-lg" id="profile-avatar-lg"></div>
+      <input type="text" id="profile-name" class="profile-name-input" placeholder="Your name" maxlength="30" autocomplete="off">
+    </div>
+
+    <!-- Stats row -->
+    <div class="profile-stats-row">
+      <div class="profile-stat-card">
+        <span class="profile-stat-value" id="stat-total-workouts">0</span>
+        <span class="profile-stat-label">Total Workouts</span>
+      </div>
+      <div class="profile-stat-card">
+        <span class="profile-stat-value" id="stat-streak">0</span>
+        <span class="profile-stat-label">Week Streak</span>
+      </div>
+      <div class="profile-stat-card">
+        <span class="profile-stat-value" id="stat-prs">0</span>
+        <span class="profile-stat-label">PRs Achieved</span>
+      </div>
+    </div>
+
+    <!-- Body measurements -->
+    <div class="settings-section">
+      <div class="settings-section-label">Body Measurements</div>
+      <div class="settings-card">
+        <div style="padding:14px 18px;display:flex;flex-direction:column;gap:14px">
+          <div class="datetime-row">
+            <div class="form-group" style="flex:1">
+              <label for="profile-height">Height</label>
+              <input type="number" id="profile-height" min="1" max="999" step="0.1" placeholder="e.g. 180">
+            </div>
+            <div class="form-group" style="flex:0 0 auto;justify-content:flex-end">
+              <label>&nbsp;</label>
+              <select class="form-select" id="profile-height-unit" style="width:auto;min-width:80px">
+                <option value="cm">cm</option>
+                <option value="ft">ft</option>
+              </select>
+            </div>
+          </div>
+          <div class="form-group">
+            <label for="profile-weight" id="profile-weight-label">Weight (kg)</label>
+            <input type="number" id="profile-weight" min="1" max="999" step="0.1" placeholder="e.g. 75">
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Goals -->
+    <div class="settings-section">
+      <div class="settings-section-label">Goals</div>
+      <div class="settings-card" style="padding:14px 18px">
+        <div class="goals-grid" id="goals-grid">
+          <!-- Rendered by renderProfile() -->
+        </div>
+      </div>
+    </div>
+
+    <!-- Notifications (inactive toggles) -->
+    <div class="settings-section">
+      <div class="settings-section-label">Notifications</div>
+      <div class="settings-card">
+        <label class="radio-row">
+          <span class="radio-row-label">
+            Weekly workout report
+            <span class="radio-row-sub">Receive a summary of your week's training</span>
+          </span>
+          <div class="toggle-switch">
+            <input type="checkbox" id="profile-notify-weekly">
+            <span class="toggle-thumb"></span>
+          </div>
+        </label>
+        <label class="radio-row" style="border-bottom:none">
+          <span class="radio-row-label">
+            Workout reminders
+            <span class="radio-row-sub">Get reminded to log your sessions</span>
+          </span>
+          <div class="toggle-switch">
+            <input type="checkbox" id="profile-notify-reminders">
+            <span class="toggle-thumb"></span>
+          </div>
+        </label>
+      </div>
+    </div>
+
+  </div>
+
+  <!-- ═══════════════ START PHASE MODAL ═══════════════ -->
+  <div class="modal" id="modal-start-phase">
+    <div class="modal-handle"></div>
+    <h2>Start Training Phase</h2>
+    <div class="modal-form">
+      <div class="form-group">
+        <label>Phase Type</label>
+        <div class="phase-type-pills" id="phase-type-pills">
+          <button class="phase-type-pill phase-type-pill--selected" data-type="bulk">🏋️ Bulk</button>
+          <button class="phase-type-pill" data-type="cut">🔥 Cut</button>
+          <button class="phase-type-pill" data-type="neither">⚖️ Neither</button>
+        </div>
+      </div>
+      <div class="form-group">
+        <label class="toggle-row" style="margin-bottom:8px">
+          <span class="toggle-label">Set a target duration</span>
+          <div class="toggle-switch">
+            <input type="checkbox" id="phase-target-toggle">
+            <span class="toggle-thumb"></span>
+          </div>
+        </label>
+        <div id="phase-target-days-group" style="display:none">
+          <input type="number" id="phase-target-days" min="1" max="999" placeholder="e.g. 90 days">
+        </div>
+      </div>
+      <div class="form-group">
+        <label for="phase-start-weight" id="phase-start-weight-label">Starting Weight (kg)</label>
+        <input type="number" id="phase-start-weight" min="1" max="999" step="0.1" placeholder="e.g. 80">
+      </div>
+    </div>
+    <div class="modal-actions" style="margin-top:16px">
+      <button class="btn-primary" id="btn-save-start-phase">Start Phase</button>
+      <button class="btn-secondary" id="btn-cancel-start-phase">Cancel</button>
+    </div>
+  </div>
+
+  <!-- ═══════════════ LOG WEIGHT MODAL ═══════════════ -->
+  <div class="modal" id="modal-log-weight">
+    <div class="modal-handle"></div>
+    <h2>Log Weight</h2>
+    <p id="log-weight-date" style="font-size:0.875rem;color:var(--text-muted);margin:0 0 16px"></p>
+    <div class="modal-form">
+      <div class="form-group">
+        <label for="log-weight-input" id="log-weight-label">Weight (kg)</label>
+        <input type="number" id="log-weight-input" min="1" max="999" step="0.1" placeholder="e.g. 82.5">
+      </div>
+    </div>
+    <div class="modal-actions" style="margin-top:16px">
+      <button class="btn-primary" id="btn-save-log-weight">Log Weight</button>
+      <button class="btn-secondary" id="btn-cancel-log-weight">Cancel</button>
+    </div>
+  </div>
+
   <!-- Toast notification -->
   <div id="toast" class="toast" role="alert" aria-live="assertive"></div>
 
-  <script src="app.js?v=31"></script>
+  <script src="app.js?v=32"></script>
   <script>
     // Register service worker for network-first caching (requires HTTPS or localhost).
     // The SW never touches localStorage — all user data (sessions, name, units) is safe.

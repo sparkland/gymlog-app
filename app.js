@@ -2,17 +2,20 @@
 
 // ─── Constants ────────────────────────────────────────────────
 const STORAGE_KEYS = {
-  TYPES:            'gym_session_types',
-  SESSIONS:         'gym_sessions',
-  ACTIVE:           'gym_active_session',
-  USER_NAME:        'gym_user_name',
-  UNITS:            'gym_units',
-  EXERCISES:        'gym_exercises',
-  SESSION_PREFS:    'gym_session_prefs',
-  REPORTS_PREFS:    'gym_reports_prefs',
-  PLANS:            'gym_workout_plans',
-  WORKOUT_SETTINGS: 'gym_workout_settings',
-  PROGRESSION:      'gym_progression_settings',
+  TYPES:             'gym_session_types',
+  SESSIONS:          'gym_sessions',
+  ACTIVE:            'gym_active_session',
+  USER_NAME:         'gym_user_name',
+  UNITS:             'gym_units',
+  EXERCISES:         'gym_exercises',
+  SESSION_PREFS:     'gym_session_prefs',
+  REPORTS_PREFS:     'gym_reports_prefs',
+  PLANS:             'gym_workout_plans',
+  WORKOUT_SETTINGS:  'gym_workout_settings',
+  PROGRESSION:       'gym_progression_settings',
+  TRAINING_PHASE:    'gym_training_phase',
+  TRAINING_HISTORY:  'gym_training_history',
+  PROFILE:           'gym_profile',
 };
 
 const DEFAULT_UNITS           = { weight: 'kg', distance: 'km' };
@@ -355,6 +358,40 @@ const Storage = {
     ex.baseWeight = weight;   // number | null
     Storage.saveActive(active);
   },
+
+  // ── Training Phase ──────────────────────────────────────────
+  getTrainingPhase() {
+    const raw = localStorage.getItem(STORAGE_KEYS.TRAINING_PHASE);
+    return raw ? JSON.parse(raw) : null;
+  },
+  saveTrainingPhase(phase) {
+    localStorage.setItem(STORAGE_KEYS.TRAINING_PHASE, JSON.stringify(phase));
+  },
+  clearTrainingPhase() {
+    localStorage.removeItem(STORAGE_KEYS.TRAINING_PHASE);
+  },
+  getTrainingHistory() {
+    const raw = localStorage.getItem(STORAGE_KEYS.TRAINING_HISTORY);
+    return raw ? JSON.parse(raw) : [];
+  },
+  addToTrainingHistory(phase) {
+    const history = Storage.getTrainingHistory();
+    history.unshift(phase); // most recent first
+    localStorage.setItem(STORAGE_KEYS.TRAINING_HISTORY, JSON.stringify(history));
+  },
+
+  // ── Profile ──────────────────────────────────────────────────
+  getProfile() {
+    const raw = localStorage.getItem(STORAGE_KEYS.PROFILE);
+    return raw ? JSON.parse(raw) : {
+      height: null, heightUnit: 'cm',
+      goals: [],
+      notifyWeeklyReport: false, notifyWorkoutReminder: false,
+    };
+  },
+  saveProfile(p) {
+    localStorage.setItem(STORAGE_KEYS.PROFILE, JSON.stringify(p));
+  },
 };
 
 // ─── App State ────────────────────────────────────────────────
@@ -394,6 +431,8 @@ const state = {
   assigningSubtypeId:  null,
   homeDateTimeUserEdited: false, // true when user manually changes date/time on Home this visit
   helpOrigin:             'settings', // 'home' | 'settings' — determines back button destination
+  sidebarOpen:            false,
+  selectedPhaseType:      'bulk',     // pill selection in start-phase modal
 };
 
 // ─── Utility ──────────────────────────────────────────────────
@@ -555,25 +594,48 @@ function migrateExercises(existing) {
 // Sub-views that live under the Settings tab
 const SETTINGS_SUB_VIEWS = new Set(['units', 'data', 'about', 'sessions-settings', 'reports-settings', 'workout-settings', 'progression-settings', 'help']);
 
+// Views that hide the bottom nav and show no nav bar
+const NO_NAV_VIEWS = new Set(['session', 'training', 'profile', 'nutrition', 'insight']);
+
+// Views that hide the hamburger button
+const NO_HAMBURGER_VIEWS = new Set(['onboarding', 'session']);
+
 function navigate(viewName) {
   document.querySelectorAll('.view').forEach(v => v.classList.remove('view--active'));
   document.getElementById(`view-${viewName}`).classList.add('view--active');
 
-  const navTarget = SETTINGS_SUB_VIEWS.has(viewName) ? 'settings' : viewName;
-  document.querySelectorAll('#bottom-nav button').forEach(btn => {
-    btn.classList.toggle('nav--active', btn.dataset.nav === navTarget);
-  });
+  // Bottom nav: hide for NO_NAV_VIEWS, otherwise restore + highlight correct tab
+  const bottomNav = document.getElementById('bottom-nav');
+  if (NO_NAV_VIEWS.has(viewName)) {
+    bottomNav.classList.add('hidden');
+  } else {
+    bottomNav.classList.remove('hidden');
+    const navTarget = SETTINGS_SUB_VIEWS.has(viewName) ? 'settings' : viewName;
+    document.querySelectorAll('#bottom-nav button').forEach(btn => {
+      btn.classList.toggle('nav--active', btn.dataset.nav === navTarget);
+    });
+  }
+
+  // Hamburger: hide on onboarding and session views
+  const hamburger = document.getElementById('btn-hamburger');
+  if (hamburger) {
+    hamburger.classList.toggle('hamburger-hidden', NO_HAMBURGER_VIEWS.has(viewName));
+  }
 
   state.currentView = viewName;
 
   const renderers = {
     home: renderHome, exercises: renderExercises, reports: renderReports,
     settings: renderSettings, units: renderUnits, data: renderData, about: renderAbout,
-    'sessions-settings': renderSessionPrefs,
-    'reports-settings':  renderReportsPrefs,
-    'workout-settings':        renderWorkoutSettings,
-    'progression-settings':    renderProgressionSettings,
-    'help':                    renderHelp,
+    'sessions-settings':     renderSessionPrefs,
+    'reports-settings':      renderReportsPrefs,
+    'workout-settings':      renderWorkoutSettings,
+    'progression-settings':  renderProgressionSettings,
+    'help':                  renderHelp,
+    'training':              renderTraining,
+    'profile':               renderProfile,
+    'nutrition':             () => {},
+    'insight':               () => {},
   };
   if (renderers[viewName]) renderers[viewName]();
 }
@@ -3526,6 +3588,8 @@ function wireEvents() {
     closeFinishConfirmModal();
     closeCancelConfirmModal();
     closeProgressionInfoModal();
+    closeStartPhaseModal();
+    closeLogWeightModal();
   });
 
   document.getElementById('btn-open-export').addEventListener('click', openExportModal);
@@ -3909,6 +3973,464 @@ function wireEvents() {
     s.increasePlates = e.target.checked;
     Storage.saveProgressionSettings(s);
   });
+
+  // ── Sidebar ────────────────────────────────────────────────
+  document.getElementById('btn-hamburger').addEventListener('click', openSidebar);
+  document.getElementById('sidebar-scrim').addEventListener('click', closeSidebar);
+  document.querySelectorAll('.sidebar-item').forEach(btn => {
+    btn.addEventListener('click', () => {
+      if (btn.classList.contains('sidebar-item--disabled')) return;
+      closeSidebar();
+      navigate(btn.dataset.view);
+    });
+  });
+
+  // ── Training modals ────────────────────────────────────────
+  document.getElementById('btn-cancel-start-phase').addEventListener('click', closeStartPhaseModal);
+  document.getElementById('btn-save-start-phase').addEventListener('click', handleStartPhase);
+  document.getElementById('btn-cancel-log-weight').addEventListener('click', closeLogWeightModal);
+  document.getElementById('btn-save-log-weight').addEventListener('click', handleLogWeight);
+  document.getElementById('btn-back-training').addEventListener('click', () => navigate('home'));
+
+  // Phase type pills
+  document.getElementById('phase-type-pills').addEventListener('click', e => {
+    const pill = e.target.closest('.phase-type-pill');
+    if (!pill) return;
+    state.selectedPhaseType = pill.dataset.type;
+    document.querySelectorAll('.phase-type-pill').forEach(p =>
+      p.classList.toggle('phase-type-pill--selected', p === pill)
+    );
+  });
+
+  // Target days toggle
+  document.getElementById('phase-target-toggle').addEventListener('change', e => {
+    document.getElementById('phase-target-days-group').style.display = e.target.checked ? '' : 'none';
+  });
+
+  // ── Profile events ─────────────────────────────────────────
+  document.getElementById('btn-back-profile').addEventListener('click', () => navigate('home'));
+  document.getElementById('btn-back-nutrition').addEventListener('click', () => navigate('home'));
+  document.getElementById('btn-back-insight').addEventListener('click', () => navigate('home'));
+
+  document.getElementById('profile-name').addEventListener('blur', () => {
+    const val = document.getElementById('profile-name').value.trim();
+    if (val) {
+      Storage.setUserName(val);
+      document.getElementById('profile-avatar-lg').textContent = getInitials(val);
+    }
+  });
+
+  ['profile-height', 'profile-weight'].forEach(id => {
+    document.getElementById(id).addEventListener('blur', () => {
+      const p = Storage.getProfile();
+      const val = parseFloat(document.getElementById(id).value);
+      if (!isNaN(val) && val > 0) {
+        if (id === 'profile-height') p.height = val;
+        if (id === 'profile-weight') p.weight = val;
+        Storage.saveProfile(p);
+      }
+    });
+  });
+
+  document.getElementById('profile-height-unit').addEventListener('change', e => {
+    const p = Storage.getProfile();
+    p.heightUnit = e.target.value;
+    Storage.saveProfile(p);
+  });
+
+  document.getElementById('profile-notify-weekly').addEventListener('change', e => {
+    const p = Storage.getProfile();
+    p.notifyWeeklyReport = e.target.checked;
+    Storage.saveProfile(p);
+  });
+
+  document.getElementById('profile-notify-reminders').addEventListener('change', e => {
+    const p = Storage.getProfile();
+    p.notifyWorkoutReminder = e.target.checked;
+    Storage.saveProfile(p);
+  });
+}
+
+// ─── Sidebar ──────────────────────────────────────────────────
+function getInitials(name) {
+  if (!name) return '?';
+  const parts = name.trim().split(/\s+/);
+  if (parts.length === 1) return parts[0].slice(0, 2).toUpperCase();
+  return (parts[0][0] + parts[parts.length - 1][0]).toUpperCase();
+}
+
+function renderSidebarHeader() {
+  const name = Storage.getUserName() || '';
+  document.getElementById('sidebar-avatar').textContent = getInitials(name);
+  document.getElementById('sidebar-name').textContent = name || 'GymLog User';
+}
+
+function updateSidebarActiveItem() {
+  document.querySelectorAll('.sidebar-item').forEach(btn => {
+    const view = btn.dataset.view;
+    // Exercise maps to 'home'
+    const isActive = view === state.currentView ||
+      (view === 'home' && ['home', 'exercises', 'reports', 'settings'].includes(state.currentView));
+    btn.classList.toggle('sidebar-item--active', isActive && !btn.classList.contains('sidebar-item--disabled'));
+  });
+}
+
+function openSidebar() {
+  renderSidebarHeader();
+  updateSidebarActiveItem();
+  document.getElementById('sidebar-drawer').classList.add('open');
+  document.getElementById('sidebar-scrim').classList.add('open');
+  state.sidebarOpen = true;
+}
+
+function closeSidebar() {
+  document.getElementById('sidebar-drawer').classList.remove('open');
+  document.getElementById('sidebar-scrim').classList.remove('open');
+  state.sidebarOpen = false;
+}
+
+// ─── Goals Definition ─────────────────────────────────────────
+const GOALS = [
+  { id: 'hypertrophy',   label: 'Muscle Growth (Hypertrophy)' },
+  { id: 'strength',      label: 'Strength' },
+  { id: 'endurance',     label: 'Endurance' },
+  { id: 'fat-loss',      label: 'Fat Loss' },
+  { id: 'recomposition', label: 'Body Recomposition' },
+  { id: 'cardio-health', label: 'Cardiovascular Health' },
+  { id: 'flexibility',   label: 'Flexibility & Mobility' },
+  { id: 'athletic',      label: 'Athletic Performance' },
+  { id: 'general',       label: 'General Fitness' },
+  { id: 'stress-relief', label: 'Stress Relief' },
+  { id: 'sport',         label: 'Sport-Specific Training' },
+  { id: 'rehab',         label: 'Rehabilitation & Recovery' },
+];
+
+// ─── Training Page ────────────────────────────────────────────
+function formatPhaseType(type) {
+  if (type === 'bulk')    return { emoji: '🏋️', label: 'Bulk',    cls: 'bulk' };
+  if (type === 'cut')     return { emoji: '🔥', label: 'Cut',     cls: 'cut' };
+  return                         { emoji: '⚖️',  label: 'Neither', cls: 'neither' };
+}
+
+function getDaysRunning(phase) {
+  const start = new Date(phase.startDate); start.setHours(0, 0, 0, 0);
+  const today = new Date(); today.setHours(0, 0, 0, 0);
+  return Math.floor((today - start) / 86400000);
+}
+
+function formatDateShort(isoDate) {
+  const d = new Date(isoDate + 'T00:00:00');
+  return d.toLocaleDateString(undefined, { day: 'numeric', month: 'short' });
+}
+
+function renderTraining() {
+  const phase   = Storage.getTrainingPhase();
+  const history = Storage.getTrainingHistory();
+  const units   = Storage.getUnits();
+  const content = document.getElementById('training-content');
+
+  // Update weight label in start-phase modal
+  document.getElementById('phase-start-weight-label').textContent = `Starting Weight (${units.weight})`;
+
+  let html = '';
+
+  if (phase) {
+    // ── Active phase ──────────────────────────────────────
+    const pt     = formatPhaseType(phase.type);
+    const days   = getDaysRunning(phase);
+    const target = phase.targetDays;
+    const pct    = target ? Math.min(100, Math.round((days / target) * 100)) : null;
+
+    html += `<div class="training-section">
+      <div class="training-section-label">Current Phase</div>
+      <div class="active-phase-card">
+        <div class="active-phase-header">
+          <div class="active-phase-type">
+            <span class="phase-type-badge phase-type-badge--${pt.cls}">${pt.emoji} ${pt.label}</span>
+          </div>
+          <button class="btn-end-phase" id="btn-end-phase">End Phase</button>
+        </div>
+        <div class="phase-days-text">
+          ${target
+            ? `Day ${days} of ${target} · started ${formatDateShort(phase.startDate)}`
+            : `Day ${days} · started ${formatDateShort(phase.startDate)}`
+          }
+        </div>
+        ${pct !== null ? `<div class="phase-progress-bar"><div class="phase-progress-fill" style="width:${pct}%"></div></div>` : ''}
+      </div>
+    </div>`;
+
+    // ── Current weight card ────────────────────────────────
+    const lastEntry = phase.weightLog.length > 0 ? phase.weightLog[phase.weightLog.length - 1] : null;
+    html += `<div class="training-section">
+      <div class="training-section-label">Body Weight</div>
+      <div class="weight-display-card">
+        <div class="weight-display-main">
+          <span class="weight-display-label">Current Weight</span>
+          ${lastEntry
+            ? `<span class="weight-display-value">${lastEntry.weight}<span class="weight-display-unit"> ${phase.weightUnit}</span></span>
+               <span class="weight-display-date">${formatDateShort(lastEntry.date)}</span>`
+            : `<span class="weight-display-value" style="color:var(--text-muted)">—</span>
+               <span class="weight-display-date">Not logged yet</span>`
+          }
+        </div>
+        <button class="btn-log-weight" id="btn-open-log-weight">📝 Log Weight</button>
+      </div>
+    </div>`;
+
+    // ── Weight history ─────────────────────────────────────
+    if (phase.weightLog.length > 0) {
+      const logReversed = [...phase.weightLog].reverse();
+      html += `<div class="training-section">
+        <div class="training-section-label">Weight History</div>
+        <div class="weight-history-list">`;
+      logReversed.forEach((entry, i) => {
+        const prev = logReversed[i + 1];
+        let deltaHtml = '';
+        if (prev) {
+          const diff = +(entry.weight - prev.weight).toFixed(1);
+          if (diff > 0)      deltaHtml = `<span class="weight-log-delta weight-log-delta--up">+${diff}</span>`;
+          else if (diff < 0) deltaHtml = `<span class="weight-log-delta weight-log-delta--down">${diff}</span>`;
+          else               deltaHtml = `<span class="weight-log-delta weight-log-delta--same">—</span>`;
+        }
+        html += `<div class="weight-log-row">
+          <span class="weight-log-date">${formatDateShort(entry.date)}</span>
+          <span class="weight-log-value">${entry.weight} ${phase.weightUnit}</span>
+          ${deltaHtml}
+        </div>`;
+      });
+      html += `</div></div>`;
+    }
+
+  } else {
+    // ── No active phase ────────────────────────────────────
+    html += `<div class="training-section">
+      <div class="no-phase-card">
+        <div class="no-phase-icon">🏁</div>
+        <div class="no-phase-title">No active phase</div>
+        <div class="no-phase-sub">Start a Bulk or Cut to track your body-weight progress</div>
+      </div>
+      <button class="btn-primary" id="btn-open-start-phase" style="width:100%;margin-top:12px">+ Start Training Phase</button>
+    </div>`;
+  }
+
+  // ── Phase history ──────────────────────────────────────
+  if (history.length > 0) {
+    html += `<div class="training-section">
+      <div class="training-section-label">Previous Phases</div>`;
+    history.forEach(h => {
+      const pt      = formatPhaseType(h.type);
+      const start   = formatDateShort(h.startDate);
+      const end     = h.endDate ? formatDateShort(h.endDate) : '?';
+      const daysAmt = h.endDate
+        ? Math.floor((new Date(h.endDate) - new Date(h.startDate)) / 86400000)
+        : '?';
+      const startW  = h.weightLog.length > 0 ? h.weightLog[0].weight : '?';
+      const endW    = h.weightLog.length > 0 ? h.weightLog[h.weightLog.length - 1].weight : '?';
+      const diff    = (typeof startW === 'number' && typeof endW === 'number')
+                       ? +(endW - startW).toFixed(1) : null;
+      const diffStr = diff !== null
+        ? (diff >= 0 ? `+${diff} ${h.weightUnit}` : `${diff} ${h.weightUnit}`)
+        : '';
+      html += `<div class="phase-history-card">
+        <div class="phase-history-header">
+          <span class="phase-type-badge phase-type-badge--${pt.cls}">${pt.emoji} ${pt.label}</span>
+          <span class="phase-history-meta">${daysAmt} days · ${start} → ${end}</span>
+        </div>
+        <div class="phase-history-weights">
+          <span>Start: <span class="phase-history-weight-val">${startW} ${h.weightUnit}</span></span>
+          <span>End: <span class="phase-history-weight-val">${endW} ${h.weightUnit}</span></span>
+          ${diffStr ? `<span style="color:${diff >= 0 ? '#22c55e' : '#ef4444'}">${diffStr}</span>` : ''}
+        </div>
+      </div>`;
+    });
+    html += `</div>`;
+  }
+
+  content.innerHTML = html;
+
+  // Wire dynamic buttons
+  const endBtn = document.getElementById('btn-end-phase');
+  if (endBtn) endBtn.addEventListener('click', handleEndPhase);
+
+  const logBtn = document.getElementById('btn-open-log-weight');
+  if (logBtn) logBtn.addEventListener('click', openLogWeightModal);
+
+  const startBtn = document.getElementById('btn-open-start-phase');
+  if (startBtn) startBtn.addEventListener('click', openStartPhaseModal);
+}
+
+function openStartPhaseModal() {
+  const units = Storage.getUnits();
+  document.getElementById('phase-start-weight-label').textContent = `Starting Weight (${units.weight})`;
+  document.getElementById('phase-start-weight').value = '';
+  document.getElementById('phase-target-days').value = '';
+  document.getElementById('phase-target-toggle').checked = false;
+  document.getElementById('phase-target-days-group').style.display = 'none';
+
+  // Reset pill selection to 'bulk'
+  state.selectedPhaseType = 'bulk';
+  document.querySelectorAll('.phase-type-pill').forEach(p => {
+    p.classList.toggle('phase-type-pill--selected', p.dataset.type === 'bulk');
+  });
+
+  document.getElementById('modal-start-phase').classList.add('open');
+  document.getElementById('modal-backdrop').classList.add('open');
+}
+
+function closeStartPhaseModal() {
+  document.getElementById('modal-start-phase').classList.remove('open');
+  document.getElementById('modal-backdrop').classList.remove('open');
+}
+
+function handleStartPhase() {
+  const units      = Storage.getUnits();
+  const weightRaw  = parseFloat(document.getElementById('phase-start-weight').value);
+  if (isNaN(weightRaw) || weightRaw <= 0) {
+    showToast('Please enter a starting weight');
+    return;
+  }
+  const targetToggle = document.getElementById('phase-target-toggle').checked;
+  const targetDays   = targetToggle
+    ? parseInt(document.getElementById('phase-target-days').value, 10)
+    : null;
+  if (targetToggle && (isNaN(targetDays) || targetDays < 1)) {
+    showToast('Please enter a valid target duration');
+    return;
+  }
+
+  const phase = {
+    id:          `phase-${Date.now()}`,
+    type:        state.selectedPhaseType === 'neither' ? null : state.selectedPhaseType,
+    startDate:   todayISO(),
+    targetDays:  targetDays,
+    weightUnit:  units.weight,
+    weightLog:   [{ date: todayISO(), weight: weightRaw }],
+  };
+  Storage.saveTrainingPhase(phase);
+  closeStartPhaseModal();
+  renderTraining();
+}
+
+function handleEndPhase() {
+  const phase = Storage.getTrainingPhase();
+  if (!phase) return;
+  const pt = formatPhaseType(phase.type);
+  if (!window.confirm(`End this ${pt.label} phase?`)) return;
+  const completed = { ...phase, endDate: todayISO() };
+  Storage.addToTrainingHistory(completed);
+  Storage.clearTrainingPhase();
+  renderTraining();
+}
+
+function openLogWeightModal() {
+  const phase = Storage.getTrainingPhase();
+  if (!phase) return;
+  document.getElementById('log-weight-label').textContent = `Weight (${phase.weightUnit})`;
+  document.getElementById('log-weight-date').textContent = new Date().toLocaleDateString(undefined, { weekday: 'long', day: 'numeric', month: 'long' });
+  document.getElementById('log-weight-input').value = '';
+  document.getElementById('modal-log-weight').classList.add('open');
+  document.getElementById('modal-backdrop').classList.add('open');
+  setTimeout(() => document.getElementById('log-weight-input').focus(), 100);
+}
+
+function closeLogWeightModal() {
+  document.getElementById('modal-log-weight').classList.remove('open');
+  document.getElementById('modal-backdrop').classList.remove('open');
+}
+
+function handleLogWeight() {
+  const phase = Storage.getTrainingPhase();
+  if (!phase) return;
+  const val = parseFloat(document.getElementById('log-weight-input').value);
+  if (isNaN(val) || val <= 0) {
+    showToast('Please enter a valid weight');
+    return;
+  }
+  phase.weightLog.push({ date: todayISO(), weight: val });
+  Storage.saveTrainingPhase(phase);
+  closeLogWeightModal();
+  renderTraining();
+}
+
+// ─── Profile Page ─────────────────────────────────────────────
+function getTotalWorkouts() {
+  return Storage.getSessions().length;
+}
+
+function getActiveStreak() {
+  const sessions = Storage.getSessions();
+  if (!sessions.length) return 0;
+  const today   = new Date(); today.setHours(0, 0, 0, 0);
+  const dayMs   = 86400000;
+  let streak    = 0;
+  let windowEnd = new Date(today);
+
+  while (true) {
+    const windowStart = new Date(windowEnd.getTime() - 6 * dayMs);
+    const hasSession  = sessions.some(s => {
+      const d = new Date(s.date + 'T00:00:00'); d.setHours(0, 0, 0, 0);
+      return d >= windowStart && d <= windowEnd;
+    });
+    if (!hasSession) break;
+    streak++;
+    windowEnd = new Date(windowStart.getTime() - dayMs);
+  }
+  return streak;
+}
+
+function getPRsAchieved() {
+  const exercises = Storage.getExercises() || [];
+  let count = 0;
+  for (const ex of exercises) {
+    if (getPRForExercise(ex.id) !== null) count++;
+  }
+  return count;
+}
+
+function renderProfile() {
+  const profile = Storage.getProfile();
+  const name    = Storage.getUserName() || '';
+  const units   = Storage.getUnits();
+
+  // Avatar + name
+  document.getElementById('profile-avatar-lg').textContent = getInitials(name);
+  document.getElementById('profile-name').value = name;
+  document.getElementById('profile-weight-label').textContent = `Weight (${units.weight})`;
+
+  // Height
+  if (profile.height != null) document.getElementById('profile-height').value = profile.height;
+  document.getElementById('profile-height-unit').value = profile.heightUnit || 'cm';
+
+  // Weight from profile (not the app unit setting — this is the user's body weight)
+  if (profile.weight != null) document.getElementById('profile-weight').value = profile.weight;
+
+  // Stats
+  document.getElementById('stat-total-workouts').textContent = getTotalWorkouts();
+  document.getElementById('stat-streak').textContent         = getActiveStreak();
+  document.getElementById('stat-prs').textContent            = getPRsAchieved();
+
+  // Goals
+  const goalsGrid = document.getElementById('goals-grid');
+  goalsGrid.innerHTML = GOALS.map(g => `
+    <button class="goal-chip${profile.goals.includes(g.id) ? ' goal-chip--selected' : ''}"
+            data-goal-id="${g.id}">${g.label}</button>
+  `).join('');
+  goalsGrid.querySelectorAll('.goal-chip').forEach(chip => {
+    chip.addEventListener('click', () => {
+      const p = Storage.getProfile();
+      const id = chip.dataset.goalId;
+      const idx = p.goals.indexOf(id);
+      if (idx === -1) p.goals.push(id);
+      else            p.goals.splice(idx, 1);
+      Storage.saveProfile(p);
+      chip.classList.toggle('goal-chip--selected', p.goals.includes(id));
+    });
+  });
+
+  // Notifications
+  document.getElementById('profile-notify-weekly').checked     = profile.notifyWeeklyReport   || false;
+  document.getElementById('profile-notify-reminders').checked  = profile.notifyWorkoutReminder || false;
 }
 
 // ─── Init ─────────────────────────────────────────────────────
@@ -3929,6 +4451,7 @@ function completeInit() {
 
   renderColorPresets();
   wireEvents();
+  renderSidebarHeader();
 
   const active = Storage.getActive();
   if (active) {
