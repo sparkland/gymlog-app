@@ -16,6 +16,7 @@ const STORAGE_KEYS = {
   TRAINING_PHASE:    'gym_training_phase',
   TRAINING_HISTORY:  'gym_training_history',
   PROFILE:           'gym_profile',
+  PROFILE_AVATAR:    'gym_profile_avatar',
 };
 
 const DEFAULT_UNITS           = { weight: 'kg', distance: 'km' };
@@ -391,6 +392,12 @@ const Storage = {
   },
   saveProfile(p) {
     localStorage.setItem(STORAGE_KEYS.PROFILE, JSON.stringify(p));
+  },
+  getProfileAvatar() {
+    return localStorage.getItem(STORAGE_KEYS.PROFILE_AVATAR) || null;
+  },
+  saveProfileAvatar(dataUrl) {
+    localStorage.setItem(STORAGE_KEYS.PROFILE_AVATAR, dataUrl);
   },
 };
 
@@ -4012,11 +4019,31 @@ function wireEvents() {
   document.getElementById('btn-back-nutrition').addEventListener('click', () => navigate('home'));
   document.getElementById('btn-back-insight').addEventListener('click', () => navigate('home'));
 
+  document.getElementById('profile-avatar-input').addEventListener('change', e => {
+    const file = e.target.files[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = ev => {
+      const dataUrl = ev.target.result;
+      Storage.saveProfileAvatar(dataUrl);
+      const name = Storage.getUserName() || '';
+      applyAvatarToElement(document.getElementById('profile-avatar-lg'), dataUrl, name);
+      applyAvatarToElement(document.getElementById('sidebar-avatar'), dataUrl, name);
+    };
+    reader.readAsDataURL(file);
+    // Reset so re-selecting the same file fires the change event again
+    e.target.value = '';
+  });
+
   document.getElementById('profile-name').addEventListener('blur', () => {
     const val = document.getElementById('profile-name').value.trim();
     if (val) {
       Storage.setUserName(val);
-      document.getElementById('profile-avatar-lg').textContent = getInitials(val);
+      // Only update initials if no photo is stored
+      if (!Storage.getProfileAvatar()) {
+        const el = document.getElementById('profile-avatar-lg');
+        el.textContent = getInitials(val);
+      }
     }
   });
 
@@ -4059,9 +4086,21 @@ function getInitials(name) {
   return (parts[0][0] + parts[parts.length - 1][0]).toUpperCase();
 }
 
+// Populate an avatar element with either a stored photo or initials fallback
+function applyAvatarToElement(el, dataUrl, name) {
+  if (dataUrl) {
+    el.innerHTML = `<img src="${dataUrl}" alt="Profile photo">`;
+    el.style.background = 'transparent';
+  } else {
+    el.textContent = getInitials(name);
+    el.style.background = '';
+  }
+}
+
 function renderSidebarHeader() {
-  const name = Storage.getUserName() || '';
-  document.getElementById('sidebar-avatar').textContent = getInitials(name);
+  const name   = Storage.getUserName() || '';
+  const avatar = Storage.getProfileAvatar();
+  applyAvatarToElement(document.getElementById('sidebar-avatar'), avatar, name);
   document.getElementById('sidebar-name').textContent = name || 'GymLog User';
 }
 
@@ -4394,7 +4433,8 @@ function renderProfile() {
   const units   = Storage.getUnits();
 
   // Avatar + name
-  document.getElementById('profile-avatar-lg').textContent = getInitials(name);
+  const avatarDataUrl = Storage.getProfileAvatar();
+  applyAvatarToElement(document.getElementById('profile-avatar-lg'), avatarDataUrl, name);
   document.getElementById('profile-name').value = name;
   document.getElementById('profile-weight-label').textContent = `Weight (${units.weight})`;
 

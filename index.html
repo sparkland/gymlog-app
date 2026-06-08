@@ -1386,7 +1386,11 @@
 
     <!-- Avatar + name -->
     <div class="profile-avatar-section">
-      <div class="profile-avatar-lg" id="profile-avatar-lg"></div>
+      <label class="profile-avatar-wrapper" for="profile-avatar-input" title="Change photo">
+        <div class="profile-avatar-lg" id="profile-avatar-lg"></div>
+        <div class="profile-avatar-edit-overlay">📷</div>
+      </label>
+      <input type="file" id="profile-avatar-input" accept="image/jpeg,image/png,image/webp,image/gif,image/heic" style="display:none">
       <input type="text" id="profile-name" class="profile-name-input" placeholder="Your name" maxlength="30" autocomplete="off">
     </div>
 
