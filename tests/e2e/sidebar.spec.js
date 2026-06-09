@@ -99,8 +99,9 @@ test.describe('Sidebar navigation', () => {
 
   // ── Page logo ───────────────────────────────────────────────────
 
-  test('page logo is hidden on Home', async ({ page }) => {
-    await expect(page.locator('#page-logo')).toHaveClass(/page-logo--hidden/);
+  test('page logo is visible on Home', async ({ page }) => {
+    await expect(page.locator('#page-logo')).not.toHaveClass(/page-logo--hidden/);
+    await expect(page.locator('#page-logo')).toBeVisible();
   });
 
   test('page logo is visible on the Exercises view', async ({ page }) => {

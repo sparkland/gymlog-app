@@ -2820,22 +2820,35 @@ input:disabled {
 #sidebar-header {
   padding: 48px 20px 20px;
   border-bottom: 1px solid var(--border);
-  display: flex;
-  flex-direction: column;
-  align-items: flex-start;
-  gap: 10px;
 }
 
+/* Tappable row: avatar + text side-by-side */
+#sidebar-header-btn {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  width: 100%;
+  background: none;
+  border: none;
+  padding: 0;
+  cursor: pointer;
+  text-align: left;
+  -webkit-tap-highlight-color: transparent;
+  border-radius: var(--radius-md);
+  transition: opacity var(--transition);
+}
+#sidebar-header-btn:hover { opacity: 0.8; }
+
 #sidebar-avatar {
-  width: 56px;
-  height: 56px;
+  width: 64px;
+  height: 64px;
   border-radius: 50%;
-  background: var(--accent-soft);
-  color: var(--accent);
+  background: var(--accent);
+  color: #fff;
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: 1.375rem;
+  font-size: 1.5rem;
   font-weight: 700;
   letter-spacing: -0.02em;
   flex-shrink: 0;
@@ -2849,10 +2862,27 @@ input:disabled {
   display: block;
 }
 
+/* Text column: name on top, "View profile" below */
+#sidebar-header-text {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  min-width: 0;
+}
+
 #sidebar-name {
-  font-weight: 600;
-  font-size: 1rem;
+  font-weight: 700;
+  font-size: 1.125rem;
   color: var(--text-primary);
+  line-height: 1.2;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+#sidebar-view-profile {
+  font-size: 0.8125rem;
+  color: var(--text-muted);
   line-height: 1.3;
 }
 
@@ -3298,3 +3328,95 @@ input:disabled {
 .coming-soon-icon { font-size: 3.5rem; line-height: 1; }
 .coming-soon-card h2 { font-size: 1.25rem; font-weight: 700; color: var(--text-primary); margin: 0; }
 .coming-soon-card p { font-size: 0.875rem; color: var(--text-secondary); line-height: 1.65; max-width: 260px; margin: 0; }
+
+/* ─── iOS PWA Safe Area Insets ───────────────────────────────────────────────
+   Applies only when launched as a home-screen web app (display-mode:
+   standalone). env(safe-area-inset-top) = status-bar height on notched /
+   Dynamic Island devices (~47 px) and ~20 px on older iPhones; 0 everywhere
+   else. Shifts fixed controls and sticky headers below the iOS status bar. */
+@media (display-mode: standalone) {
+  /* Fixed hamburger + page logo */
+  #btn-hamburger {
+    top: calc(14px + env(safe-area-inset-top));
+  }
+  #page-logo {
+    top: calc(14px + env(safe-area-inset-top));
+  }
+
+  /* Sticky view headers — stick below the status bar, not behind it */
+  .view-header {
+    top:         env(safe-area-inset-top);
+    padding-top: calc(20px + env(safe-area-inset-top));
+  }
+
+  /* Full-screen views (Train, Profile, etc.) already have 64 px top padding */
+  .view--full .view-header {
+    padding-top: calc(64px + env(safe-area-inset-top));
+  }
+
+  /* Tab views (Exercises, Reports, Settings) — same 64 px clear + safe area */
+  #view-exercises .view-header,
+  #view-reports   .view-header,
+  #view-settings  .view-header {
+    padding-top: calc(64px + env(safe-area-inset-top));
+  }
+
+  /* Sidebar drawer — push inner content below the status bar */
+  #sidebar-drawer {
+    padding-top: env(safe-area-inset-top);
+  }
+
+  /* Bottom nav — clear the home-indicator bar */
+  #bottom-nav {
+    padding-bottom: env(safe-area-inset-bottom);
+    height: calc(var(--nav-height) + env(safe-area-inset-bottom));
+  }
+
+  /* Adjust the default view bottom offset to match the taller nav */
+  .view {
+    bottom: calc(var(--nav-height) + env(safe-area-inset-bottom));
+  }
+  .view--full {
+    bottom: 0;
+  }
+}
+
+/* ─── Tab View Headers (Exercises, Reports, Settings) ───────────────────────
+   These are the three bottom-nav tab views. They are NOT .view--full but they
+   still need their sticky header to clear the fixed hamburger + page-logo
+   (which extends to ~50 px from the top). 64 px matches the full-screen views
+   and gives the same consistent breathing room. */
+#view-exercises .view-header,
+#view-reports   .view-header,
+#view-settings  .view-header {
+  padding-top: 64px;
+}
+
+/* ─── Home View Header ───────────────────────────────────────────────────────
+   The home page now uses .view-header like Train/Profile. A top controls row
+   sits at the same height as the fixed hamburger/logo; the h1 and greeting
+   appear below it. */
+.home-view-header {
+  padding-top: 14px;   /* align controls row with hamburger top (14px from top) */
+}
+
+/* Top row: empty left (hamburger lives there, fixed) + right controls */
+.home-header-controls {
+  display: flex;
+  justify-content: flex-end;
+  align-items: center;
+  height: 36px;        /* matches hamburger height so badge aligns with it */
+  margin-bottom: 8px;
+}
+
+/* Date/time pickers sit just below the sticky header */
+.home-datetime-section {
+  padding: 14px 20px 4px;
+}
+
+/* iOS PWA: push home header controls down with the rest of the fixed elements */
+@media (display-mode: standalone) {
+  .home-view-header {
+    padding-top: calc(14px + env(safe-area-inset-top));
+  }
+}

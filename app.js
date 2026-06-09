@@ -630,7 +630,7 @@ function navigate(viewName) {
   }
 
   // Page logo: show beside hamburger on sidebar-accessible views (not home/settings/session/onboarding)
-  const LOGO_VIEWS = new Set(['exercises', 'training', 'profile', 'nutrition', 'insight']);
+  const LOGO_VIEWS = new Set(['home', 'exercises', 'reports', 'settings', 'training', 'profile', 'nutrition', 'insight']);
   const pageLogo = document.getElementById('page-logo');
   if (pageLogo) {
     pageLogo.classList.toggle('page-logo--hidden', !LOGO_VIEWS.has(viewName));
@@ -708,8 +708,7 @@ function renderHome() {
   badge.textContent = dateInput.value === todayISO() ? 'Today' : formatDate(dateInput.value);
 
   const name = Storage.getUserName();
-  const greetingEl = document.getElementById('home-greeting');
-  if (greetingEl) greetingEl.textContent = name ? `Hey, ${name} 👋` : '';
+  // subtitle is static — set directly in index.html
 
   renderTypeGrid();
   renderSubtypePicker();
@@ -3991,6 +3990,10 @@ function wireEvents() {
   // ── Sidebar ────────────────────────────────────────────────
   document.getElementById('btn-hamburger').addEventListener('click', openSidebar);
   document.getElementById('sidebar-scrim').addEventListener('click', closeSidebar);
+  document.getElementById('sidebar-header-btn').addEventListener('click', () => {
+    closeSidebar();
+    navigate('profile');
+  });
   document.querySelectorAll('.sidebar-item').forEach(btn => {
     btn.addEventListener('click', () => {
       if (btn.classList.contains('sidebar-item--disabled')) return;
