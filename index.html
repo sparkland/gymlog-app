@@ -1565,6 +1565,26 @@
         navigator.serviceWorker.register('/sw.js')
           .catch(err => console.warn('GymLog: Service Worker registration failed:', err));
       });
+
+      // When a new SW activates and calls clients.claim(), this fires.
+      // Reloading ensures the page uses the freshly cached assets rather than
+      // whatever was loaded from the old SW cache — critical for iOS standalone mode.
+      //
+      // Guard: only attach this listener when a SW is already controlling the page.
+      // If there is no current controller the SW is installing for the first time —
+      // letting the reload fire in that case causes an unexpected navigation that
+      // disrupts first-load behaviour (and breaks Playwright tests).
+      // On subsequent opens the controller will already be set, so updates trigger
+      // the reload correctly.
+      if (navigator.serviceWorker.controller) {
+        let refreshing = false;
+        navigator.serviceWorker.addEventListener('controllerchange', () => {
+          if (!refreshing) {
+            refreshing = true;
+            window.location.reload();
+          }
+        });
+      }
     }
   </script>
 </body>
