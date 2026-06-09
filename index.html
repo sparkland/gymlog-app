@@ -11,7 +11,7 @@
   <meta http-equiv="Expires" content="0">
   <title>GymLog</title>
   <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🏋️</text></svg>">
-  <link rel="stylesheet" href="styles.css?v=40">
+  <link rel="stylesheet" href="styles.css?v=41">
   <!-- Detect iOS standalone mode before first paint so safe-area CSS applies
        immediately without a layout flash. window.navigator.standalone is an
        Apple-only property that is true when launched from the home screen.
@@ -1639,16 +1639,20 @@
   <!-- Toast notification -->
   <div id="toast" class="toast" role="alert" aria-live="assertive"></div>
 
-  <script src="app.js?v=38"></script>
+  <script src="app.js?v=39"></script>
   <script>
     // Register service worker for network-first caching (requires HTTPS or localhost).
     // The SW never touches localStorage — all user data (sessions, name, units) is safe.
     if ('serviceWorker' in navigator) {
       window.addEventListener('load', () => {
-        navigator.serviceWorker.register('/sw.js')
+        navigator.serviceWorker.register('/sw.js', { updateViaCache: 'none' })
           .then(reg => {
             // Force a fresh update check on every app open so iOS standalone
             // picks up new versions without waiting for the 24-hour SW refresh interval.
+            // updateViaCache:'none' ensures the browser always fetches sw.js over the
+            // network (bypassing iOS's HTTP cache) when checking for updates, so a
+            // bumped CACHE_NAME is always detected immediately rather than after the
+            // HTTP cache TTL expires.
             reg.update();
           })
           .catch(err => console.warn('GymLog: Service Worker registration failed:', err));
