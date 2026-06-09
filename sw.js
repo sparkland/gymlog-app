@@ -1,7 +1,7 @@
 // GymLog Service Worker — network-first strategy
 // Bumping CACHE_NAME forces the old cache to be deleted on next activation.
 // localStorage is never touched here; all user data is safe.
-const CACHE_NAME = 'gymlog-v2.1';
+const CACHE_NAME = 'gymlog-v2.2';
 
 const CORE_ASSETS = [
   '/',

@@ -3417,3 +3417,126 @@ html.pwa-standalone .view--full { bottom: 0; }
   .home-view-header { padding-top: calc(14px + env(safe-area-inset-top)); }
 }
 html.pwa-standalone .home-view-header { padding-top: calc(14px + env(safe-area-inset-top)); }
+
+/* ─── Insight Page ───────────────────────────────────────────── */
+.insight-scroll { padding-bottom: 32px; }
+
+.insight-section { padding: 16px 16px 0; }
+.insight-section--last { padding-bottom: 16px; }
+
+.insight-stats-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+}
+
+/* Streak card */
+.insight-streak-card {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 16px 18px;
+}
+.insight-streak-main { display: flex; align-items: baseline; gap: 8px; }
+.insight-streak-value { font-size: 2.5rem; font-weight: 700; color: var(--accent); line-height: 1; }
+.insight-streak-unit { font-size: 0.875rem; color: var(--text-secondary); font-weight: 500; }
+.insight-streak-delta {
+  font-size: 0.8125rem;
+  font-weight: 600;
+  padding: 4px 10px;
+  border-radius: 99px;
+}
+.insight-streak-delta--up     { background: rgba(34, 197, 94, 0.15); color: var(--success); }
+.insight-streak-delta--down   { background: rgba(239, 68, 68, 0.12); color: var(--danger); }
+.insight-streak-delta--neutral { background: rgba(255, 255, 255, 0.06); color: var(--text-muted); }
+
+/* Chart cards */
+.insight-chart-card { padding: 14px 16px 12px; }
+.insight-chart-subtitle {
+  font-size: 0.75rem;
+  color: var(--text-muted);
+  margin-bottom: 10px;
+}
+
+/* SVG charts */
+.insight-svg { display: block; width: 100%; overflow: visible; }
+.insight-axis-label {
+  font-size: 9px;
+  fill: #64748b;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif;
+}
+
+/* Legend */
+.insight-legend { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 10px; }
+.insight-legend-item { display: flex; align-items: center; gap: 5px; }
+.insight-legend-dot { width: 10px; height: 10px; border-radius: 50%; flex-shrink: 0; }
+.insight-legend-label { font-size: 0.6875rem; color: var(--text-secondary); }
+
+/* PR rows */
+.insight-pr-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 12px 16px;
+}
+.insight-pr-row--border { border-bottom: 1px solid var(--border); }
+.insight-pr-main { display: flex; flex-direction: column; gap: 2px; }
+.insight-pr-name { font-size: 0.9375rem; font-weight: 600; color: var(--text-primary); }
+.insight-pr-date { font-size: 0.75rem; color: var(--text-muted); }
+.insight-pr-values { display: flex; flex-direction: column; align-items: flex-end; gap: 2px; }
+.insight-pr-value { font-size: 1rem; font-weight: 700; color: var(--accent); }
+.insight-pr-delta { font-size: 0.75rem; font-weight: 600; color: var(--success); }
+
+/* Volume period toggle */
+.insight-period-row { display: flex; gap: 6px; margin-bottom: 12px; }
+.insight-period-btn {
+  flex: 1;
+  padding: 7px 0;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--border);
+  background: none;
+  color: var(--text-muted);
+  font-size: 0.8125rem;
+  font-weight: 600;
+  cursor: pointer;
+  font-family: inherit;
+  transition: background var(--transition), color var(--transition), border-color var(--transition);
+  -webkit-tap-highlight-color: transparent;
+}
+.insight-period-btn--active {
+  background: var(--accent-soft);
+  border-color: var(--accent);
+  color: var(--accent);
+}
+
+/* Empty states */
+.insight-empty {
+  font-size: 0.875rem;
+  color: var(--text-muted);
+  text-align: center;
+  padding: 20px 0 10px;
+}
+.insight-empty--padded { padding: 16px; }
+
+/* Muscle Distribution coming-soon variant (compact) */
+.insight-coming-soon {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 10px;
+  padding: 28px 24px;
+  text-align: center;
+}
+.insight-coming-soon h3 {
+  font-size: 1.0625rem;
+  font-weight: 700;
+  color: var(--text-primary);
+  margin: 0;
+}
+.insight-coming-soon p {
+  font-size: 0.8125rem;
+  color: var(--text-secondary);
+  line-height: 1.6;
+  max-width: 240px;
+  margin: 0;
+}

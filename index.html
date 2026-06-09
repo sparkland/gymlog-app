@@ -11,7 +11,7 @@
   <meta http-equiv="Expires" content="0">
   <title>GymLog</title>
   <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🏋️</text></svg>">
-  <link rel="stylesheet" href="styles.css?v=39">
+  <link rel="stylesheet" href="styles.css?v=40">
   <!-- Detect iOS standalone mode before first paint so safe-area CSS applies
        immediately without a layout flash. window.navigator.standalone is an
        Apple-only property that is true when launched from the home screen.
@@ -55,10 +55,9 @@
         <span class="sidebar-item-label">Nutrition</span>
         <span class="coming-soon-badge">Soon</span>
       </button>
-      <button class="sidebar-item sidebar-item--disabled" data-view="insight">
+      <button class="sidebar-item" data-view="insight">
         <span class="sidebar-item-icon">💡</span>
         <span class="sidebar-item-label">Insight</span>
-        <span class="coming-soon-badge">Soon</span>
       </button>
       <button class="sidebar-item" data-view="profile">
         <span class="sidebar-item-icon">👤</span>
@@ -1403,12 +1402,86 @@
     <div class="view-header">
       <button class="btn-back" id="btn-back-insight">← Home</button>
       <h1>Insight</h1>
-      <p>Advanced analytics &amp; trends</p>
+      <p>Training analytics &amp; trends</p>
     </div>
-    <div class="coming-soon-card">
-      <div class="coming-soon-icon">💡</div>
-      <h2>Coming Soon</h2>
-      <p>In-depth training insights and progress analytics are coming in a future update.</p>
+    <div class="insight-scroll">
+
+      <!-- Consistency / Streak -->
+      <div class="insight-section">
+        <div class="settings-section-label">Consistency</div>
+        <div class="insight-streak-card settings-card">
+          <div class="insight-streak-main">
+            <span class="insight-streak-value" id="insight-streak">0</span>
+            <span class="insight-streak-unit">week streak</span>
+          </div>
+          <div class="insight-streak-delta" id="insight-streak-delta"></div>
+        </div>
+      </div>
+
+      <!-- Activity This Year -->
+      <div class="insight-section">
+        <div class="settings-section-label">Activity This Year</div>
+        <div class="insight-stats-row">
+          <div class="profile-stat-card">
+            <span class="profile-stat-value" id="insight-active-days">0</span>
+            <span class="profile-stat-label">Active Days</span>
+          </div>
+          <div class="profile-stat-card">
+            <span class="profile-stat-value" id="insight-workouts-per-week">0</span>
+            <span class="profile-stat-label">Workouts / Week</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Strength Progression -->
+      <div class="insight-section">
+        <div class="settings-section-label">Strength Progression</div>
+        <div class="insight-chart-card settings-card">
+          <p class="insight-chart-subtitle">Max weight per session type · last 6 months</p>
+          <div id="insight-strength-chart"></div>
+          <div id="insight-strength-legend" class="insight-legend"></div>
+        </div>
+      </div>
+
+      <!-- Cardio Progression -->
+      <div class="insight-section">
+        <div class="settings-section-label">Cardio Progression</div>
+        <div class="insight-chart-card settings-card">
+          <p class="insight-chart-subtitle">Max distance per session type · last 6 months</p>
+          <div id="insight-cardio-chart"></div>
+          <div id="insight-cardio-legend" class="insight-legend"></div>
+        </div>
+      </div>
+
+      <!-- Recent Personal Records -->
+      <div class="insight-section">
+        <div class="settings-section-label">Recent Personal Records</div>
+        <div id="insight-prs" class="settings-card"></div>
+      </div>
+
+      <!-- Weekly Volume -->
+      <div class="insight-section">
+        <div class="settings-section-label">Weekly Volume</div>
+        <div class="insight-chart-card settings-card">
+          <div class="insight-period-row">
+            <button class="insight-period-btn insight-period-btn--active" data-period="4weeks">4 Weeks</button>
+            <button class="insight-period-btn" data-period="3months">3 Months</button>
+            <button class="insight-period-btn" data-period="alltime">All Time</button>
+          </div>
+          <div id="insight-volume-chart"></div>
+        </div>
+      </div>
+
+      <!-- Muscle Distribution — Coming Soon -->
+      <div class="insight-section insight-section--last">
+        <div class="settings-section-label">Muscle Distribution</div>
+        <div class="insight-coming-soon settings-card">
+          <div class="coming-soon-icon" style="font-size:2rem">💪</div>
+          <h3>Coming Soon</h3>
+          <p>Muscle group distribution analytics will be available in a future update.</p>
+        </div>
+      </div>
+
     </div>
   </div>
 
@@ -1566,7 +1639,7 @@
   <!-- Toast notification -->
   <div id="toast" class="toast" role="alert" aria-live="assertive"></div>
 
-  <script src="app.js?v=37"></script>
+  <script src="app.js?v=38"></script>
   <script>
     // Register service worker for network-first caching (requires HTTPS or localhost).
     // The SW never touches localStorage — all user data (sessions, name, units) is safe.

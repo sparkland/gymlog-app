@@ -440,6 +440,7 @@ const state = {
   helpOrigin:             'settings', // 'home' | 'settings' — determines back button destination
   sidebarOpen:            false,
   selectedPhaseType:      'bulk',     // pill selection in start-phase modal
+  insightVolumePeriod:    '4weeks',   // '4weeks' | '3months' | 'alltime'
 };
 
 // ─── Utility ──────────────────────────────────────────────────
@@ -656,7 +657,7 @@ function navigate(viewName) {
     'training':              renderTraining,
     'profile':               renderProfile,
     'nutrition':             () => {},
-    'insight':               () => {},
+    'insight':               renderInsight,
   };
   if (renderers[viewName]) renderers[viewName]();
 }
@@ -4036,6 +4037,17 @@ function wireEvents() {
   document.getElementById('btn-back-nutrition').addEventListener('click', () => navigate('home'));
   document.getElementById('btn-back-insight').addEventListener('click', () => navigate('home'));
 
+  // ── Insight volume period toggle ───────────────────────────
+  document.querySelectorAll('.insight-period-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+      state.insightVolumePeriod = btn.dataset.period;
+      document.querySelectorAll('.insight-period-btn').forEach(b =>
+        b.classList.toggle('insight-period-btn--active', b === btn)
+      );
+      renderInsightVolumeChart();
+    });
+  });
+
   document.getElementById('profile-avatar-input').addEventListener('change', e => {
     const file = e.target.files[0];
     if (!file) return;
@@ -4446,6 +4458,422 @@ function getPRsAchieved() {
     if (getPRForExercise(ex.id) !== null) count++;
   }
   return count;
+}
+
+// ─── Insight Page — Computation ───────────────────────────────
+
+/** Count unique session dates in the current calendar year. */
+function getInsightActiveDaysThisYear() {
+  const year = new Date().getFullYear().toString();
+  const dates = new Set();
+  for (const s of Storage.getSessions()) {
+    if (s.date && s.date.startsWith(year)) dates.add(s.date);
+  }
+  return dates.size;
+}
+
+/**
+ * Average workouts per week this year (rounded to 1 dp).
+ * Weeks elapsed = (now − Jan 1) / 7 days, minimum 1.
+ */
+function getInsightWorkoutsPerWeek() {
+  const now        = new Date();
+  const yearStart  = new Date(now.getFullYear(), 0, 1);
+  const weeksElapsed = Math.max(1, (now - yearStart) / (7 * 86400000));
+  const year  = now.getFullYear().toString();
+  const count = Storage.getSessions().filter(s => s.date && s.date.startsWith(year)).length;
+  if (count === 0) return '0';
+  return (count / weeksElapsed).toFixed(1);
+}
+
+/**
+ * Session count this week vs last week (Mon–Sun).
+ * Returns { thisWeek, lastWeek, delta }.
+ */
+function getInsightStreakDelta() {
+  const sessions = Storage.getSessions();
+  const { start, end } = getWeekBounds();
+  const thisMonDate   = new Date(start + 'T00:00:00');
+  const lastMon       = new Date(thisMonDate); lastMon.setDate(thisMonDate.getDate() - 7);
+  const lastSun       = new Date(thisMonDate); lastSun.setDate(thisMonDate.getDate() - 1);
+  const lastWeekStart = lastMon.toISOString().slice(0, 10);
+  const lastWeekEnd   = lastSun.toISOString().slice(0, 10);
+  let thisWeek = 0, lastWeek = 0;
+  for (const s of sessions) {
+    if (!s.date) continue;
+    if (s.date >= start && s.date <= end) thisWeek++;
+    if (s.date >= lastWeekStart && s.date <= lastWeekEnd) lastWeek++;
+  }
+  return { thisWeek, lastWeek, delta: thisWeek - lastWeek };
+}
+
+/**
+ * Line-chart data for the last 6 calendar months.
+ * type = 'strength': Y = max set.weight (kg/lbs) — plates excluded.
+ * type = 'cardio':   Y = max set.distance — null excluded.
+ * Returns { months: string[], series: [{label, data:(number|null)[], color}] }
+ */
+function getInsightProgressionData(type) {
+  const COLORS = ['#6366f1', '#22c55e', '#f59e0b', '#ec4899', '#06b6d4', '#8b5cf6'];
+  const now    = new Date();
+  const monthKeys   = [];
+  const monthLabels = [];
+  for (let i = 5; i >= 0; i--) {
+    const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
+    monthKeys.push(`${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`);
+    monthLabels.push(d.toLocaleString('en-GB', { month: 'short' }));
+  }
+
+  const seriesMap = new Map(); // key → { label, dataByMonth }
+  for (const session of Storage.getSessions()) {
+    if (!session.date) continue;
+    const mk = session.date.slice(0, 7);
+    if (!monthKeys.includes(mk)) continue;
+
+    const label     = session.sessionSubtypeName
+      ? `${session.sessionTypeName} · ${session.sessionSubtypeName}`
+      : session.sessionTypeName;
+    const seriesKey = session.sessionTypeId + '|' + (session.sessionSubtypeId || '');
+
+    if (!seriesMap.has(seriesKey)) seriesMap.set(seriesKey, { label, dataByMonth: {} });
+    const entry = seriesMap.get(seriesKey);
+
+    for (const ex of (session.exercises || [])) {
+      if (ex.exerciseType !== type) continue;
+      for (const set of (ex.sets || [])) {
+        let val = null;
+        if (type === 'strength') {
+          if (set.weightUnit === 'plates' || set.weight == null || set.weight === '') continue;
+          val = parseFloat(set.weight);
+        } else {
+          if (set.distance == null || set.distance === '') continue;
+          val = parseFloat(set.distance);
+        }
+        if (isNaN(val)) continue;
+        const prev = entry.dataByMonth[mk];
+        if (prev == null || val > prev) entry.dataByMonth[mk] = val;
+      }
+    }
+  }
+
+  let colorIdx = 0;
+  const activeSeries = [];
+  for (const [, entry] of seriesMap) {
+    const data = monthKeys.map(mk => entry.dataByMonth[mk] ?? null);
+    if (data.some(v => v !== null)) {
+      activeSeries.push({ label: entry.label, data, color: COLORS[colorIdx % COLORS.length] });
+      colorIdx++;
+    }
+  }
+  return { months: monthLabels, series: activeSeries };
+}
+
+/**
+ * Top-3 most recently SET PR events across all exercises.
+ * Each event: { exerciseName, exerciseType, date, displayValue, deltaStr }
+ */
+function getInsightRecentPRs() {
+  const sessions = Storage.getSessions()
+    .slice()
+    .sort((a, b) => a.date.localeCompare(b.date) || (a.startTime || '').localeCompare(b.startTime || ''));
+
+  const units      = Storage.getUnits();
+  const runningBest = new Map(); // exerciseId → { score, set }
+  const prEvents   = [];
+
+  for (const session of sessions) {
+    for (const ex of (session.exercises || [])) {
+      const { exerciseId, exerciseName, exerciseType } = ex;
+      for (const set of (ex.sets || [])) {
+        const score = getSetPRScore(set, exerciseType);
+        if (score.primary <= 0) continue;
+
+        const prev = runningBest.get(exerciseId);
+        if (!prev || prScoreBetter(score, prev.score)) {
+          let displayValue = '';
+          let deltaStr     = '';
+
+          if (exerciseType === 'strength') {
+            if (set.weightUnit === 'plates') {
+              displayValue = `${set.weight} plate${set.weight !== 1 ? 's' : ''}`;
+            } else {
+              displayValue = `${set.weight}${set.weightUnit || units.weight}`;
+            }
+            if (prev) {
+              const diff = score.primary - prev.score.primary;
+              if (diff > 0) {
+                const u = set.weightUnit === 'plates' ? ' plates' : (set.weightUnit || units.weight);
+                deltaStr = `+${diff}${u}`;
+              }
+            }
+          } else {
+            if (set.distance != null) {
+              const u = set.distanceUnit || units.distance;
+              displayValue = `${set.distance}${u}`;
+              if (prev && prev.score.primary > 0) {
+                const diff = score.primary - prev.score.primary;
+                if (diff > 0) deltaStr = `+${diff.toFixed(1)}${u}`;
+              }
+            } else {
+              displayValue = set.duration || '';
+            }
+          }
+
+          prEvents.push({ exerciseName, exerciseType, date: session.date, displayValue, deltaStr });
+          runningBest.set(exerciseId, { score });
+        }
+      }
+    }
+  }
+
+  prEvents.sort((a, b) => b.date.localeCompare(a.date));
+  return prEvents.slice(0, 3);
+}
+
+/**
+ * Bar-chart data for weekly volume (strength sets only; plates excluded).
+ * Volume = Σ(weight × reps).
+ * period: '4weeks' (4 ISO weeks) | '3months' (13 ISO weeks) | 'alltime' (by month)
+ * Returns { bars: [{label, value}], unit }
+ */
+function getInsightVolumeData(period) {
+  const sessions = Storage.getSessions();
+  const units    = Storage.getUnits();
+
+  function volumeFor(subset) {
+    let total = 0;
+    for (const s of subset) {
+      for (const ex of (s.exercises || [])) {
+        if (ex.exerciseType !== 'strength') continue;
+        for (const set of (ex.sets || [])) {
+          if (set.weightUnit === 'plates') continue;
+          const w = parseFloat(set.weight);
+          const r = parseInt(set.reps, 10);
+          if (!isNaN(w) && !isNaN(r)) total += w * r;
+        }
+      }
+    }
+    return Math.round(total);
+  }
+
+  if (period === 'alltime') {
+    const byMonth = new Map();
+    for (const s of sessions) {
+      if (!s.date) continue;
+      const mk = s.date.slice(0, 7);
+      if (!byMonth.has(mk)) byMonth.set(mk, []);
+      byMonth.get(mk).push(s);
+    }
+    const bars = [...byMonth.keys()].sort().map(mk => {
+      const [y, m] = mk.split('-').map(Number);
+      const label = new Date(y, m - 1, 1).toLocaleString('en-GB', { month: 'short', year: '2-digit' });
+      return { label, value: volumeFor(byMonth.get(mk)) };
+    });
+    return { bars, unit: units.weight };
+  }
+
+  const nWeeks = period === '4weeks' ? 4 : 13;
+  const { start: thisWeekStart } = getWeekBounds();
+  const thisMonDate = new Date(thisWeekStart + 'T00:00:00');
+  const bars = [];
+  for (let i = nWeeks - 1; i >= 0; i--) {
+    const mon = new Date(thisMonDate); mon.setDate(thisMonDate.getDate() - i * 7);
+    const sun = new Date(mon);        sun.setDate(mon.getDate() + 6);
+    const monStr = mon.toISOString().slice(0, 10);
+    const sunStr = sun.toISOString().slice(0, 10);
+    const subset = sessions.filter(s => s.date && s.date >= monStr && s.date <= sunStr);
+    const label  = mon.toLocaleString('en-GB', { day: 'numeric', month: 'short' });
+    bars.push({ label, value: volumeFor(subset) });
+  }
+  return { bars, unit: units.weight };
+}
+
+// ─── Insight Page — Rendering ──────────────────────────────────
+
+/**
+ * Renders a vanilla-SVG line chart.
+ * months: string[6], series: [{label, data:(number|null)[], color}]
+ */
+function renderInsightLineChart(containerId, months, series) {
+  const container = document.getElementById(containerId);
+  if (!container) return;
+  if (!series.length) {
+    container.innerHTML = '<p class="insight-empty">No data yet</p>';
+    return;
+  }
+
+  const W = 320, H = 160;
+  const PAD = { top: 10, right: 12, bottom: 28, left: 38 };
+  const cW  = W - PAD.left - PAD.right;
+  const cH  = H - PAD.top  - PAD.bottom;
+
+  const allVals  = series.flatMap(s => s.data.filter(v => v !== null));
+  const yMin     = Math.min(...allVals);
+  const yMax     = Math.max(...allVals);
+  const yRange   = yMax === yMin ? 1 : yMax - yMin;
+  const sMin     = yMin - yRange * 0.05;
+  const sMax     = yMax + yRange * 0.15;
+  const sRange   = sMax - sMin;
+
+  const xPos = i => PAD.left + (i / (months.length - 1)) * cW;
+  const yPos = v => PAD.top + (1 - (v - sMin) / sRange) * cH;
+
+  // Gridlines + Y labels
+  let grids = '', yLabels = '';
+  for (let i = 0; i <= 4; i++) {
+    const v = sMin + (i / 4) * sRange;
+    const y = yPos(v).toFixed(1);
+    grids   += `<line x1="${PAD.left}" y1="${y}" x2="${W - PAD.right}" y2="${y}" stroke="rgba(255,255,255,0.07)" stroke-width="1"/>`;
+    yLabels += `<text x="${PAD.left - 5}" y="${y}" text-anchor="end" dominant-baseline="middle" class="insight-axis-label">${Math.round(v)}</text>`;
+  }
+
+  // X labels
+  let xLabels = '';
+  months.forEach((m, i) => {
+    xLabels += `<text x="${xPos(i).toFixed(1)}" y="${H - 6}" text-anchor="middle" class="insight-axis-label">${m}</text>`;
+  });
+
+  // Lines + dots
+  let lines = '';
+  for (const s of series) {
+    let d = '', inPath = false;
+    s.data.forEach((v, i) => {
+      if (v === null) { inPath = false; return; }
+      const x = xPos(i).toFixed(1), y = yPos(v).toFixed(1);
+      d += inPath ? ` L${x},${y}` : `M${x},${y}`;
+      inPath = true;
+    });
+    if (d) lines += `<path d="${d}" fill="none" stroke="${s.color}" stroke-width="2" stroke-linejoin="round" stroke-linecap="round"/>`;
+    s.data.forEach((v, i) => {
+      if (v !== null) lines += `<circle cx="${xPos(i).toFixed(1)}" cy="${yPos(v).toFixed(1)}" r="3" fill="${s.color}"/>`;
+    });
+  }
+
+  container.innerHTML = `<svg viewBox="0 0 ${W} ${H}" width="100%" class="insight-svg">${grids}${yLabels}${xLabels}${lines}</svg>`;
+}
+
+/**
+ * Renders a vanilla-SVG bar chart.
+ * bars: [{label, value}], unit: string
+ */
+function renderInsightBarChart(containerId, bars, unit) {
+  const container = document.getElementById(containerId);
+  if (!container) return;
+  if (!bars.length || bars.every(b => b.value === 0)) {
+    container.innerHTML = '<p class="insight-empty">No volume data yet</p>';
+    return;
+  }
+
+  const W = 320, H = 140;
+  const PAD = { top: 10, right: 12, bottom: 32, left: 44 };
+  const cW  = W - PAD.left - PAD.right;
+  const cH  = H - PAD.top  - PAD.bottom;
+
+  const maxVal = Math.max(...bars.map(b => b.value), 1);
+  const yMax   = maxVal * 1.15;
+  const barW   = Math.floor((cW / bars.length) * 0.65);
+  const barGap = (cW - barW * bars.length) / (bars.length + 1);
+  const yPos   = v => PAD.top + (1 - v / yMax) * cH;
+  const barX   = i => PAD.left + barGap + i * (barW + barGap);
+
+  let grids = '', yLabels = '';
+  for (let i = 0; i <= 4; i++) {
+    const v = (i / 4) * yMax;
+    const y = yPos(v).toFixed(1);
+    grids   += `<line x1="${PAD.left}" y1="${y}" x2="${W - PAD.right}" y2="${y}" stroke="rgba(255,255,255,0.07)" stroke-width="1"/>`;
+    if (i > 0) yLabels += `<text x="${PAD.left - 5}" y="${y}" text-anchor="end" dominant-baseline="middle" class="insight-axis-label">${Math.round(v)}</text>`;
+  }
+
+  let barsHtml = '';
+  bars.forEach((b, i) => {
+    const x  = barX(i).toFixed(1);
+    const yT = yPos(b.value).toFixed(1);
+    const bH = Math.max(2, cH - (parseFloat(yT) - PAD.top)).toFixed(1);
+    barsHtml += `<rect x="${x}" y="${yT}" width="${barW}" height="${bH}" rx="3" fill="#6366f1" opacity="0.85"/>`;
+    const lbl = b.label.length > 6 ? b.label.slice(0, 6) : b.label;
+    barsHtml += `<text x="${(barX(i) + barW / 2).toFixed(1)}" y="${H - 8}" text-anchor="middle" class="insight-axis-label">${lbl}</text>`;
+  });
+
+  container.innerHTML = `<svg viewBox="0 0 ${W} ${H}" width="100%" class="insight-svg">${grids}${yLabels}${barsHtml}</svg>`;
+}
+
+/** Renders colored-dot legend into legendId. */
+function renderInsightLegend(legendId, series) {
+  const el = document.getElementById(legendId);
+  if (!el) return;
+  el.innerHTML = series.map(s =>
+    `<span class="insight-legend-item"><span class="insight-legend-dot" style="background:${s.color}"></span><span class="insight-legend-label">${s.label}</span></span>`
+  ).join('');
+}
+
+/** Renders top-3 recent PRs into #insight-prs. */
+function renderInsightPRs() {
+  const el  = document.getElementById('insight-prs');
+  if (!el) return;
+  const prs = getInsightRecentPRs();
+  if (!prs.length) {
+    el.innerHTML = '<p class="insight-empty insight-empty--padded">No personal records set yet.</p>';
+    return;
+  }
+  el.innerHTML = prs.map((pr, i) => `
+    <div class="insight-pr-row${i < prs.length - 1 ? ' insight-pr-row--border' : ''}">
+      <div class="insight-pr-main">
+        <span class="insight-pr-name">${pr.exerciseName}</span>
+        <span class="insight-pr-date">${formatDateShort(pr.date)}</span>
+      </div>
+      <div class="insight-pr-values">
+        <span class="insight-pr-value">${pr.displayValue}</span>
+        ${pr.deltaStr ? `<span class="insight-pr-delta">${pr.deltaStr}</span>` : ''}
+      </div>
+    </div>`
+  ).join('');
+}
+
+/** Renders volume bar chart using state.insightVolumePeriod. */
+function renderInsightVolumeChart() {
+  const { bars, unit } = getInsightVolumeData(state.insightVolumePeriod);
+  renderInsightBarChart('insight-volume-chart', bars, unit);
+}
+
+/** Top-level Insight render — called by navigate(). */
+function renderInsight() {
+  // Streak
+  document.getElementById('insight-streak').textContent = getActiveStreak();
+
+  const deltaEl = document.getElementById('insight-streak-delta');
+  const { delta } = getInsightStreakDelta();
+  if (delta > 0) {
+    deltaEl.textContent = `+${delta} vs last week`;
+    deltaEl.className   = 'insight-streak-delta insight-streak-delta--up';
+  } else if (delta < 0) {
+    deltaEl.textContent = `${delta} vs last week`;
+    deltaEl.className   = 'insight-streak-delta insight-streak-delta--down';
+  } else {
+    deltaEl.textContent = '= same as last week';
+    deltaEl.className   = 'insight-streak-delta insight-streak-delta--neutral';
+  }
+
+  // Activity metrics
+  document.getElementById('insight-active-days').textContent       = getInsightActiveDaysThisYear();
+  document.getElementById('insight-workouts-per-week').textContent  = getInsightWorkoutsPerWeek();
+
+  // Progression charts
+  const strengthData = getInsightProgressionData('strength');
+  renderInsightLineChart('insight-strength-chart', strengthData.months, strengthData.series);
+  renderInsightLegend('insight-strength-legend', strengthData.series);
+
+  const cardioData = getInsightProgressionData('cardio');
+  renderInsightLineChart('insight-cardio-chart', cardioData.months, cardioData.series);
+  renderInsightLegend('insight-cardio-legend', cardioData.series);
+
+  // PRs
+  renderInsightPRs();
+
+  // Volume: sync toggle, then render
+  document.querySelectorAll('.insight-period-btn').forEach(btn => {
+    btn.classList.toggle('insight-period-btn--active', btn.dataset.period === state.insightVolumePeriod);
+  });
+  renderInsightVolumeChart();
 }
 
 function renderProfile() {
