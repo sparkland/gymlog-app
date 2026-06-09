@@ -602,7 +602,11 @@ function migrateExercises(existing) {
 const SETTINGS_SUB_VIEWS = new Set(['units', 'data', 'about', 'sessions-settings', 'reports-settings', 'workout-settings', 'progression-settings', 'help']);
 
 // Views that hide the bottom nav and show no nav bar
-const NO_NAV_VIEWS = new Set(['session', 'training', 'profile', 'nutrition', 'insight']);
+const NO_NAV_VIEWS = new Set([
+  'session', 'training', 'profile', 'nutrition', 'insight',
+  'settings', 'units', 'data', 'about', 'sessions-settings',
+  'reports-settings', 'workout-settings', 'progression-settings', 'help',
+]);
 
 // Views that hide the hamburger button
 const NO_HAMBURGER_VIEWS = new Set(['onboarding', 'session']);
@@ -617,9 +621,8 @@ function navigate(viewName) {
     bottomNav.classList.add('hidden');
   } else {
     bottomNav.classList.remove('hidden');
-    const navTarget = SETTINGS_SUB_VIEWS.has(viewName) ? 'settings' : viewName;
     document.querySelectorAll('#bottom-nav button').forEach(btn => {
-      btn.classList.toggle('nav--active', btn.dataset.nav === navTarget);
+      btn.classList.toggle('nav--active', btn.dataset.nav === viewName);
     });
   }
 
@@ -629,8 +632,12 @@ function navigate(viewName) {
     hamburger.classList.toggle('hamburger-hidden', NO_HAMBURGER_VIEWS.has(viewName));
   }
 
-  // Page logo: show beside hamburger on sidebar-accessible views (not home/settings/session/onboarding)
-  const LOGO_VIEWS = new Set(['home', 'exercises', 'reports', 'settings', 'training', 'profile', 'nutrition', 'insight']);
+  // Page logo: show beside hamburger on sidebar-accessible views
+  const LOGO_VIEWS = new Set([
+    'home', 'exercises', 'reports', 'training', 'profile', 'nutrition', 'insight',
+    'settings', 'units', 'data', 'about', 'sessions-settings',
+    'reports-settings', 'workout-settings', 'progression-settings', 'help',
+  ]);
   const pageLogo = document.getElementById('page-logo');
   if (pageLogo) {
     pageLogo.classList.toggle('page-logo--hidden', !LOGO_VIEWS.has(viewName));
@@ -4115,11 +4122,15 @@ function renderSidebarHeader() {
 }
 
 function updateSidebarActiveItem() {
+  const settingsViews = new Set([
+    'settings', 'units', 'data', 'about', 'sessions-settings',
+    'reports-settings', 'workout-settings', 'progression-settings', 'help',
+  ]);
   document.querySelectorAll('.sidebar-item').forEach(btn => {
     const view = btn.dataset.view;
-    // Exercise maps to 'home'
     const isActive = view === state.currentView ||
-      (view === 'home' && ['home', 'exercises', 'reports', 'settings'].includes(state.currentView));
+      (view === 'home' && ['home', 'exercises', 'reports'].includes(state.currentView)) ||
+      (view === 'settings' && settingsViews.has(state.currentView));
     btn.classList.toggle('sidebar-item--active', isActive && !btn.classList.contains('sidebar-item--disabled'));
   });
 }

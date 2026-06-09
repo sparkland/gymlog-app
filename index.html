@@ -11,7 +11,7 @@
   <meta http-equiv="Expires" content="0">
   <title>GymLog</title>
   <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🏋️</text></svg>">
-  <link rel="stylesheet" href="styles.css?v=37">
+  <link rel="stylesheet" href="styles.css?v=38">
   <!-- Detect iOS standalone mode before first paint so safe-area CSS applies
        immediately without a layout flash. window.navigator.standalone is an
        Apple-only property that is true when launched from the home screen.
@@ -63,6 +63,10 @@
       <button class="sidebar-item" data-view="profile">
         <span class="sidebar-item-icon">👤</span>
         <span class="sidebar-item-label">Profile</span>
+      </button>
+      <button class="sidebar-item" data-view="settings">
+        <span class="sidebar-item-icon">⚙️</span>
+        <span class="sidebar-item-label">Settings</span>
       </button>
     </nav>
     <div id="sidebar-footer">GymLog v2.0 alpha</div>
@@ -298,14 +302,10 @@
       <span class="nav-icon">📊</span>
       Reports
     </button>
-    <button data-nav="settings">
-      <span class="nav-icon">⚙️</span>
-      Settings
-    </button>
   </nav>
 
   <!-- ═══════════════ SETTINGS VIEW ═══════════════ -->
-  <div id="view-settings" class="view">
+  <div id="view-settings" class="view view--full">
     <div class="view-header">
       <h1>Settings</h1>
       <p>Preferences &amp; app info</p>
@@ -379,7 +379,7 @@
   </div>
 
   <!-- ═══════════════ UNITS VIEW ═══════════════ -->
-  <div id="view-units" class="view">
+  <div id="view-units" class="view view--full">
     <div class="view-header">
       <button class="btn-back" id="btn-back-units">← Settings</button>
       <h1>Units</h1>
@@ -418,7 +418,7 @@
   </div>
 
   <!-- ═══════════════ WORKOUT SETTINGS VIEW ═══════════════ -->
-  <div id="view-workout-settings" class="view">
+  <div id="view-workout-settings" class="view view--full">
     <div class="view-header">
       <button class="btn-back" id="btn-back-workout-settings">← Settings</button>
       <h1>Workout Plans</h1>
@@ -442,7 +442,7 @@
   </div>
 
   <!-- ═══════════════ SESSIONS SETTINGS VIEW ═══════════════ -->
-  <div id="view-sessions-settings" class="view">
+  <div id="view-sessions-settings" class="view view--full">
     <div class="view-header">
       <button class="btn-back" id="btn-back-sessions-settings">← Settings</button>
       <h1>Sessions</h1>
@@ -495,7 +495,7 @@
   </div>
 
   <!-- ═══════════════ REPORTS SETTINGS VIEW ═══════════════ -->
-  <div id="view-reports-settings" class="view">
+  <div id="view-reports-settings" class="view view--full">
     <div class="view-header">
       <button class="btn-back" id="btn-back-reports-settings">← Settings</button>
       <h1>Reports</h1>
@@ -519,7 +519,7 @@
   </div>
 
   <!-- ═══════════════ PROGRESSION TARGETS SETTINGS VIEW ═══════════════ -->
-  <div id="view-progression-settings" class="view">
+  <div id="view-progression-settings" class="view view--full">
     <div class="view-header">
       <button class="btn-back" id="btn-back-progression-settings">← Settings</button>
       <h1>Progression Targets</h1>
@@ -620,7 +620,7 @@
   </div>
 
   <!-- ═══════════════ DATA VIEW ═══════════════ -->
-  <div id="view-data" class="view">
+  <div id="view-data" class="view view--full">
     <div class="view-header">
       <button class="btn-back" id="btn-back-data">← Settings</button>
       <h1>Data</h1>
@@ -679,7 +679,7 @@
   </div>
 
   <!-- ═══════════════ ABOUT VIEW ═══════════════ -->
-  <div id="view-about" class="view">
+  <div id="view-about" class="view view--full">
     <div class="view-header">
       <button class="btn-back" id="btn-back-about">← Settings</button>
       <h1>About</h1>
@@ -916,7 +916,7 @@
   </div>
 
   <!-- ═══════════════ HELP VIEW ═══════════════ -->
-  <div id="view-help" class="view">
+  <div id="view-help" class="view view--full">
     <div class="view-header">
       <button class="btn-back" id="btn-back-help">← Settings</button>
       <h1>Help</h1>
@@ -1566,7 +1566,7 @@
   <!-- Toast notification -->
   <div id="toast" class="toast" role="alert" aria-live="assertive"></div>
 
-  <script src="app.js?v=36"></script>
+  <script src="app.js?v=37"></script>
   <script>
     // Register service worker for network-first caching (requires HTTPS or localhost).
     // The SW never touches localStorage — all user data (sessions, name, units) is safe.

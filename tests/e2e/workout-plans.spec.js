@@ -13,7 +13,7 @@
  */
 
 const { test, expect } = require('@playwright/test');
-const { skipOnboarding, STORAGE_KEYS, selectSessionType } = require('../helpers');
+const { skipOnboarding, STORAGE_KEYS, selectSessionType, navigateViaSidebar } = require('../helpers');
 
 const PLANS_KEY    = 'gym_workout_plans';
 const WS_KEY       = 'gym_workout_settings'; // workout settings
@@ -162,7 +162,7 @@ test.describe('Workout Plans', () => {
     await page.goto('/');
 
     // Navigate to Settings → Workout Plans and disable auto-load
-    await page.locator('[data-nav="settings"]').click();
+    await navigateViaSidebar(page, 'settings');
     await page.locator('.settings-row[data-nav="workout-settings"]').click();
     await page.locator('#view-workout-settings.view--active').waitFor();
 
@@ -172,8 +172,8 @@ test.describe('Workout Plans', () => {
     await page.locator('#workout-autoload-toggle + .toggle-thumb').click();
     await expect(toggle).not.toBeChecked();
 
-    // Navigate back to home and start the Chest session
-    await page.locator('[data-nav="home"]').click();
+    // Navigate back to home and start the Chest session (Settings is now sidebar-only)
+    await navigateViaSidebar(page, 'home');
     await startSessionWithSubtype(page, 'Strength Training', 'Chest');
 
     // Plan should not have loaded
