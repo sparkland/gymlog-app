@@ -3343,3 +3343,32 @@ input:disabled {
     bottom: 0;
   }
 }
+
+/* ─── Home View Header ───────────────────────────────────────────────────────
+   The home page now uses .view-header like Train/Profile. A top controls row
+   sits at the same height as the fixed hamburger/logo; the h1 and greeting
+   appear below it. */
+.home-view-header {
+  padding-top: 14px;   /* align controls row with hamburger top (14px from top) */
+}
+
+/* Top row: empty left (hamburger lives there, fixed) + right controls */
+.home-header-controls {
+  display: flex;
+  justify-content: flex-end;
+  align-items: center;
+  height: 36px;        /* matches hamburger height so badge aligns with it */
+  margin-bottom: 8px;
+}
+
+/* Date/time pickers sit just below the sticky header */
+.home-datetime-section {
+  padding: 14px 20px 4px;
+}
+
+/* iOS PWA: push home header controls down with the rest of the fixed elements */
+@media (display-mode: standalone) {
+  .home-view-header {
+    padding-top: calc(14px + env(safe-area-inset-top));
+  }
+}

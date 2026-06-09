@@ -11,7 +11,7 @@
   <meta http-equiv="Expires" content="0">
   <title>GymLog</title>
   <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🏋️</text></svg>">
-  <link rel="stylesheet" href="styles.css?v=32">
+  <link rel="stylesheet" href="styles.css?v=33">
 </head>
 <body>
 
@@ -86,17 +86,18 @@
   <!-- ═══════════════ HOME VIEW ═══════════════ -->
   <div id="view-home" class="view view--active">
 
-    <div class="home-hero">
-      <div class="home-hero-top">
-        <div>
-          <h1>Gym<span>Log</span></h1>
-          <p class="home-greeting" id="home-greeting"></p>
-        </div>
+    <div class="view-header home-view-header">
+      <div class="home-header-controls">
         <div class="home-hero-top-right">
           <button class="btn-home-help" id="btn-home-help" aria-label="Help">❓</button>
           <div class="date-badge" id="today-badge">Today</div>
         </div>
       </div>
+      <h1>Exercise</h1>
+      <p class="home-greeting" id="home-greeting"></p>
+    </div>
+
+    <div class="home-datetime-section">
       <div class="datetime-row">
         <div class="input-group">
           <label for="input-date">Date</label>
@@ -1550,7 +1551,7 @@
   <!-- Toast notification -->
   <div id="toast" class="toast" role="alert" aria-live="assertive"></div>
 
-  <script src="app.js?v=32"></script>
+  <script src="app.js?v=33"></script>
   <script>
     // Register service worker for network-first caching (requires HTTPS or localhost).
     // The SW never touches localStorage — all user data (sessions, name, units) is safe.

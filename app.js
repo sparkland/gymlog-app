@@ -630,7 +630,7 @@ function navigate(viewName) {
   }
 
   // Page logo: show beside hamburger on sidebar-accessible views (not home/settings/session/onboarding)
-  const LOGO_VIEWS = new Set(['exercises', 'training', 'profile', 'nutrition', 'insight']);
+  const LOGO_VIEWS = new Set(['home', 'exercises', 'training', 'profile', 'nutrition', 'insight']);
   const pageLogo = document.getElementById('page-logo');
   if (pageLogo) {
     pageLogo.classList.toggle('page-logo--hidden', !LOGO_VIEWS.has(viewName));
