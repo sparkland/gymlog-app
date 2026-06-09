@@ -3330,56 +3330,41 @@ input:disabled {
 .coming-soon-card p { font-size: 0.875rem; color: var(--text-secondary); line-height: 1.65; max-width: 260px; margin: 0; }
 
 /* ─── iOS PWA Safe Area Insets ───────────────────────────────────────────────
-   Applies only when launched as a home-screen web app (display-mode:
-   standalone). env(safe-area-inset-top) = status-bar height on notched /
-   Dynamic Island devices (~47 px) and ~20 px on older iPhones; 0 everywhere
-   else. Shifts fixed controls and sticky headers below the iOS status bar. */
+   Two parallel rule sets — both must be kept in sync:
+   1. @media (display-mode: standalone)  — works on Chrome/Android and modern iOS
+   2. html.pwa-standalone                — the reliable iOS fallback. Apple's
+      implementation of the display-mode media query has long-standing bugs so we
+      also detect standalone via window.navigator.standalone in a <head> script
+      and add this class to <html> before first paint.
+   env(safe-area-inset-top) ≈ 47 px on notched/Dynamic Island iPhones, ~20 px
+   on older iPhones, 0 everywhere else. */
+
 @media (display-mode: standalone) {
-  /* Fixed hamburger + page logo */
-  #btn-hamburger {
-    top: calc(14px + env(safe-area-inset-top));
-  }
-  #page-logo {
-    top: calc(14px + env(safe-area-inset-top));
-  }
-
-  /* Sticky view headers — stick below the status bar, not behind it */
-  .view-header {
-    top:         env(safe-area-inset-top);
-    padding-top: calc(20px + env(safe-area-inset-top));
-  }
-
-  /* Full-screen views (Train, Profile, etc.) already have 64 px top padding */
-  .view--full .view-header {
-    padding-top: calc(64px + env(safe-area-inset-top));
-  }
-
-  /* Tab views (Exercises, Reports, Settings) — same 64 px clear + safe area */
+  #btn-hamburger { top: calc(14px + env(safe-area-inset-top)); }
+  #page-logo     { top: calc(14px + env(safe-area-inset-top)); }
+  .view-header   { top: env(safe-area-inset-top); padding-top: calc(20px + env(safe-area-inset-top)); }
+  .view--full .view-header { padding-top: calc(64px + env(safe-area-inset-top)); }
   #view-exercises .view-header,
   #view-reports   .view-header,
-  #view-settings  .view-header {
-    padding-top: calc(64px + env(safe-area-inset-top));
-  }
-
-  /* Sidebar drawer — push inner content below the status bar */
-  #sidebar-drawer {
-    padding-top: env(safe-area-inset-top);
-  }
-
-  /* Bottom nav — clear the home-indicator bar */
-  #bottom-nav {
-    padding-bottom: env(safe-area-inset-bottom);
-    height: calc(var(--nav-height) + env(safe-area-inset-bottom));
-  }
-
-  /* Adjust the default view bottom offset to match the taller nav */
-  .view {
-    bottom: calc(var(--nav-height) + env(safe-area-inset-bottom));
-  }
-  .view--full {
-    bottom: 0;
-  }
+  #view-settings  .view-header { padding-top: calc(64px + env(safe-area-inset-top)); }
+  #sidebar-drawer { padding-top: env(safe-area-inset-top); }
+  #bottom-nav { padding-bottom: env(safe-area-inset-bottom); height: calc(var(--nav-height) + env(safe-area-inset-bottom)); }
+  .view      { bottom: calc(var(--nav-height) + env(safe-area-inset-bottom)); }
+  .view--full { bottom: 0; }
 }
+
+/* iOS-reliable duplicate — added via window.navigator.standalone detection */
+html.pwa-standalone #btn-hamburger { top: calc(14px + env(safe-area-inset-top)); }
+html.pwa-standalone #page-logo     { top: calc(14px + env(safe-area-inset-top)); }
+html.pwa-standalone .view-header   { top: env(safe-area-inset-top); padding-top: calc(20px + env(safe-area-inset-top)); }
+html.pwa-standalone .view--full .view-header { padding-top: calc(64px + env(safe-area-inset-top)); }
+html.pwa-standalone #view-exercises .view-header,
+html.pwa-standalone #view-reports   .view-header,
+html.pwa-standalone #view-settings  .view-header { padding-top: calc(64px + env(safe-area-inset-top)); }
+html.pwa-standalone #sidebar-drawer { padding-top: env(safe-area-inset-top); }
+html.pwa-standalone #bottom-nav { padding-bottom: env(safe-area-inset-bottom); height: calc(var(--nav-height) + env(safe-area-inset-bottom)); }
+html.pwa-standalone .view      { bottom: calc(var(--nav-height) + env(safe-area-inset-bottom)); }
+html.pwa-standalone .view--full { bottom: 0; }
 
 /* ─── Tab View Headers (Exercises, Reports, Settings) ───────────────────────
    These are the three bottom-nav tab views. They are NOT .view--full but they
@@ -3416,7 +3401,6 @@ input:disabled {
 
 /* iOS PWA: push home header controls down with the rest of the fixed elements */
 @media (display-mode: standalone) {
-  .home-view-header {
-    padding-top: calc(14px + env(safe-area-inset-top));
-  }
+  .home-view-header { padding-top: calc(14px + env(safe-area-inset-top)); }
 }
+html.pwa-standalone .home-view-header { padding-top: calc(14px + env(safe-area-inset-top)); }

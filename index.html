@@ -11,7 +11,17 @@
   <meta http-equiv="Expires" content="0">
   <title>GymLog</title>
   <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🏋️</text></svg>">
-  <link rel="stylesheet" href="styles.css?v=35">
+  <link rel="stylesheet" href="styles.css?v=36">
+  <!-- Detect iOS standalone mode before first paint so safe-area CSS applies
+       immediately without a layout flash. window.navigator.standalone is an
+       Apple-only property that is true when launched from the home screen.
+       We cannot rely on @media (display-mode: standalone) alone because iOS
+       Safari has had long-standing bugs where that media query does not fire. -->
+  <script>
+    if (window.navigator.standalone === true) {
+      document.documentElement.classList.add('pwa-standalone');
+    }
+  </script>
 </head>
 <body>
 
@@ -1556,13 +1566,18 @@
   <!-- Toast notification -->
   <div id="toast" class="toast" role="alert" aria-live="assertive"></div>
 
-  <script src="app.js?v=35"></script>
+  <script src="app.js?v=36"></script>
   <script>
     // Register service worker for network-first caching (requires HTTPS or localhost).
     // The SW never touches localStorage — all user data (sessions, name, units) is safe.
     if ('serviceWorker' in navigator) {
       window.addEventListener('load', () => {
         navigator.serviceWorker.register('/sw.js')
+          .then(reg => {
+            // Force a fresh update check on every app open so iOS standalone
+            // picks up new versions without waiting for the 24-hour SW refresh interval.
+            reg.update();
+          })
           .catch(err => console.warn('GymLog: Service Worker registration failed:', err));
       });
 
