@@ -3324,6 +3324,13 @@ input:disabled {
     padding-top: calc(64px + env(safe-area-inset-top));
   }
 
+  /* Tab views (Exercises, Reports, Settings) — same 64 px clear + safe area */
+  #view-exercises .view-header,
+  #view-reports   .view-header,
+  #view-settings  .view-header {
+    padding-top: calc(64px + env(safe-area-inset-top));
+  }
+
   /* Sidebar drawer — push inner content below the status bar */
   #sidebar-drawer {
     padding-top: env(safe-area-inset-top);
@@ -3342,6 +3349,17 @@ input:disabled {
   .view--full {
     bottom: 0;
   }
+}
+
+/* ─── Tab View Headers (Exercises, Reports, Settings) ───────────────────────
+   These are the three bottom-nav tab views. They are NOT .view--full but they
+   still need their sticky header to clear the fixed hamburger + page-logo
+   (which extends to ~50 px from the top). 64 px matches the full-screen views
+   and gives the same consistent breathing room. */
+#view-exercises .view-header,
+#view-reports   .view-header,
+#view-settings  .view-header {
+  padding-top: 64px;
 }
 
 /* ─── Home View Header ───────────────────────────────────────────────────────
