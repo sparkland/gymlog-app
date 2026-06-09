@@ -11,7 +11,7 @@
   <meta http-equiv="Expires" content="0">
   <title>GymLog</title>
   <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🏋️</text></svg>">
-  <link rel="stylesheet" href="styles.css?v=34">
+  <link rel="stylesheet" href="styles.css?v=35">
 </head>
 <body>
 
@@ -23,8 +23,13 @@
   <div id="sidebar-scrim"></div>
   <div id="sidebar-drawer">
     <div id="sidebar-header">
-      <div id="sidebar-avatar"></div>
-      <span id="sidebar-name"></span>
+      <button id="sidebar-header-btn" aria-label="View profile">
+        <div id="sidebar-avatar"></div>
+        <div id="sidebar-header-text">
+          <span id="sidebar-name"></span>
+          <span id="sidebar-view-profile">View profile</span>
+        </div>
+      </button>
     </div>
     <nav id="sidebar-nav">
       <button class="sidebar-item" data-view="home">
@@ -1551,7 +1556,7 @@
   <!-- Toast notification -->
   <div id="toast" class="toast" role="alert" aria-live="assertive"></div>
 
-  <script src="app.js?v=34"></script>
+  <script src="app.js?v=35"></script>
   <script>
     // Register service worker for network-first caching (requires HTTPS or localhost).
     // The SW never touches localStorage — all user data (sessions, name, units) is safe.

@@ -3990,6 +3990,10 @@ function wireEvents() {
   // ── Sidebar ────────────────────────────────────────────────
   document.getElementById('btn-hamburger').addEventListener('click', openSidebar);
   document.getElementById('sidebar-scrim').addEventListener('click', closeSidebar);
+  document.getElementById('sidebar-header-btn').addEventListener('click', () => {
+    closeSidebar();
+    navigate('profile');
+  });
   document.querySelectorAll('.sidebar-item').forEach(btn => {
     btn.addEventListener('click', () => {
       if (btn.classList.contains('sidebar-item--disabled')) return;
