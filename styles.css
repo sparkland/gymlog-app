@@ -3336,13 +3336,25 @@ input:disabled {
       implementation of the display-mode media query has long-standing bugs so we
       also detect standalone via window.navigator.standalone in a <head> script
       and add this class to <html> before first paint.
-   env(safe-area-inset-top) ≈ 47 px on notched/Dynamic Island iPhones, ~20 px
-   on older iPhones, 0 everywhere else. */
+
+   IMPORTANT: do NOT set `top: env(safe-area-inset-top)` on sticky .view-header.
+   iOS Safari applies that value as a *visual* downward offset in addition to the
+   padding-top, doubling the safe-area gap and misaligning header controls with
+   the fixed hamburger/logo. Sticky `top` is only needed as a scroll threshold —
+   use padding-top alone to push content below the status bar.
+
+   Bottom bar: html background is set to --bg-card so the home-indicator area
+   (below the bottom nav) matches the nav colour instead of showing black. */
+
+/* Fill the home-indicator area at the bottom with the nav background colour */
+@media (display-mode: standalone) { html { background: var(--bg-card); } }
+html.pwa-standalone               { background: var(--bg-card); }
 
 @media (display-mode: standalone) {
   #btn-hamburger { top: calc(14px + env(safe-area-inset-top)); }
   #page-logo     { top: calc(14px + env(safe-area-inset-top)); }
-  .view-header   { top: env(safe-area-inset-top); padding-top: calc(20px + env(safe-area-inset-top)); }
+  /* padding-top only — no top: override (avoids iOS Safari sticky double-offset) */
+  .view-header   { padding-top: calc(20px + env(safe-area-inset-top)); }
   .view--full .view-header { padding-top: calc(64px + env(safe-area-inset-top)); }
   #view-exercises .view-header,
   #view-reports   .view-header,
@@ -3356,7 +3368,8 @@ input:disabled {
 /* iOS-reliable duplicate — added via window.navigator.standalone detection */
 html.pwa-standalone #btn-hamburger { top: calc(14px + env(safe-area-inset-top)); }
 html.pwa-standalone #page-logo     { top: calc(14px + env(safe-area-inset-top)); }
-html.pwa-standalone .view-header   { top: env(safe-area-inset-top); padding-top: calc(20px + env(safe-area-inset-top)); }
+/* padding-top only — no top: override (avoids iOS Safari sticky double-offset) */
+html.pwa-standalone .view-header   { padding-top: calc(20px + env(safe-area-inset-top)); }
 html.pwa-standalone .view--full .view-header { padding-top: calc(64px + env(safe-area-inset-top)); }
 html.pwa-standalone #view-exercises .view-header,
 html.pwa-standalone #view-reports   .view-header,
