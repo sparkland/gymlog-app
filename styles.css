@@ -3298,3 +3298,48 @@ input:disabled {
 .coming-soon-icon { font-size: 3.5rem; line-height: 1; }
 .coming-soon-card h2 { font-size: 1.25rem; font-weight: 700; color: var(--text-primary); margin: 0; }
 .coming-soon-card p { font-size: 0.875rem; color: var(--text-secondary); line-height: 1.65; max-width: 260px; margin: 0; }
+
+/* ─── iOS PWA Safe Area Insets ───────────────────────────────────────────────
+   Applies only when launched as a home-screen web app (display-mode:
+   standalone). env(safe-area-inset-top) = status-bar height on notched /
+   Dynamic Island devices (~47 px) and ~20 px on older iPhones; 0 everywhere
+   else. Shifts fixed controls and sticky headers below the iOS status bar. */
+@media (display-mode: standalone) {
+  /* Fixed hamburger + page logo */
+  #btn-hamburger {
+    top: calc(14px + env(safe-area-inset-top));
+  }
+  #page-logo {
+    top: calc(14px + env(safe-area-inset-top));
+  }
+
+  /* Sticky view headers — stick below the status bar, not behind it */
+  .view-header {
+    top:         env(safe-area-inset-top);
+    padding-top: calc(20px + env(safe-area-inset-top));
+  }
+
+  /* Full-screen views (Train, Profile, etc.) already have 64 px top padding */
+  .view--full .view-header {
+    padding-top: calc(64px + env(safe-area-inset-top));
+  }
+
+  /* Sidebar drawer — push inner content below the status bar */
+  #sidebar-drawer {
+    padding-top: env(safe-area-inset-top);
+  }
+
+  /* Bottom nav — clear the home-indicator bar */
+  #bottom-nav {
+    padding-bottom: env(safe-area-inset-bottom);
+    height: calc(var(--nav-height) + env(safe-area-inset-bottom));
+  }
+
+  /* Adjust the default view bottom offset to match the taller nav */
+  .view {
+    bottom: calc(var(--nav-height) + env(safe-area-inset-bottom));
+  }
+  .view--full {
+    bottom: 0;
+  }
+}
