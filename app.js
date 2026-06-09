@@ -708,8 +708,7 @@ function renderHome() {
   badge.textContent = dateInput.value === todayISO() ? 'Today' : formatDate(dateInput.value);
 
   const name = Storage.getUserName();
-  const greetingEl = document.getElementById('home-greeting');
-  if (greetingEl) greetingEl.textContent = name ? `Hey, ${name} 👋` : '';
+  // subtitle is static — set directly in index.html
 
   renderTypeGrid();
   renderSubtypePicker();
