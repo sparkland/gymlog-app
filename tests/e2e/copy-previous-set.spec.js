@@ -17,7 +17,7 @@
  */
 
 const { test, expect } = require('@playwright/test');
-const { skipOnboarding, STORAGE_KEYS, startSession, addExerciseToSession } = require('../helpers');
+const { skipOnboarding, STORAGE_KEYS, startSession, addExerciseToSession, navigateViaSidebar } = require('../helpers');
 
 const SESSION_PREFS_KEY = 'gym_session_prefs';
 
@@ -244,15 +244,15 @@ test.describe('Copy Previous Set', () => {
     await page.goto('/');
 
     // Enable Copy Previous Set via the Settings UI
-    await page.locator('[data-nav="settings"]').click();
+    await navigateViaSidebar(page, 'settings');
     await page.locator('.settings-row[data-nav="sessions-settings"]').click();
     await page.locator('#view-sessions-settings.view--active').waitFor();
     // Click the visible toggle thumb (native checkbox is display:none)
     await page.locator('#sl-copy-prev-set + .toggle-thumb').click();
     await expect(page.locator('#sl-copy-prev-set')).toBeChecked();
 
-    // Go back to home and run a session
-    await page.locator('[data-nav="home"]').click();
+    // Go back to home and run a session (Settings is now sidebar-only, use sidebar to go home)
+    await navigateViaSidebar(page, 'home');
     await startSession(page, 'CrossFit');
     await addExerciseToSession(page, 'Bench Press');
 

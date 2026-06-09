@@ -73,10 +73,17 @@ test.describe('Sidebar navigation', () => {
     await expect(page.locator('#bottom-nav')).toHaveClass(/hidden/);
   });
 
-  test('Nutrition and Insight sidebar items are marked disabled', async ({ page }) => {
+  test('Nutrition sidebar item is marked disabled', async ({ page }) => {
     await openSidebar(page);
     await expect(page.locator('.sidebar-item[data-view="nutrition"]')).toHaveClass(/sidebar-item--disabled/);
-    await expect(page.locator('.sidebar-item[data-view="insight"]')).toHaveClass(/sidebar-item--disabled/);
+  });
+
+  test('Insight sidebar item is enabled and navigates to insight view', async ({ page }) => {
+    await openSidebar(page);
+    await expect(page.locator('.sidebar-item[data-view="insight"]')).not.toHaveClass(/sidebar-item--disabled/);
+    await page.locator('.sidebar-item[data-view="insight"]').click();
+    await expect(page.locator('#view-insight')).toHaveClass(/view--active/);
+    await expect(page.locator('#bottom-nav')).toHaveClass(/hidden/);
   });
 
   test('clicking a disabled sidebar item does not navigate away', async ({ page }) => {
